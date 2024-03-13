@@ -64,7 +64,7 @@ async def auto_generate_did(key_alg: KeyAlgorithm, pass_key: str, scid_ver=1):
     # debug: checking the SCID derivation
     verify_scid(doc_v1)
 
-    doc_v1["proof"] = [eddsa_sign(doc_v1, key, kid)]
+    doc_v1["proof"] = [eddsa_sign(doc_v1, key, f"{doc_id}#{kid}")]
 
     pretty = json.dumps(doc_v1, indent=2)
     with open(doc_dir.joinpath(f"did-{cid_v1}.json"), "w") as out:
@@ -85,13 +85,12 @@ def genesis_document(keys: list[aries_askar.Key]) -> str:
     """
     now = datetime.now().isoformat(timespec="seconds")
     doc = {
-        "@context": [DID_CONTEXT, DID_CONTEXT, JWS_CONTEXT],
+        "@context": [DID_CONTEXT, DI_CONTEXT, JWS_CONTEXT],
         "id": "did:webnext:{{SCID}}",
         "created": now,
         "updated": now,
         "authentication": [],
         "verificationMethod": [],
-        "previousHash": "",
         "versionId": 0,
     }
     for key in keys:
@@ -113,6 +112,8 @@ def derive_version_cid(document: Union[dict, str]) -> CID:
         document = document.copy()
     if "proof" in document:
         del document["proof"]
+    if "previousHash" in document:
+        document["previousHash"] = CID.decode(document["previousHash"])
     norm = dag_json.encode(document)
     hash = sha256(norm).digest()
     return CID(base="base58btc", version=1, codec="dag-json", digest=("sha2-256", hash))
@@ -137,7 +138,7 @@ def verify_scid(document: Union[dict, str]):
     scid_ver = int(doc_scid[:1])
     plc_id = pfx_id + ":{{SCID}}"
     doc_v0 = json.loads(doc_json.replace(doc_id, plc_id))
-    doc_v0["previousHash"] = ""
+    del doc_v0["previousHash"]
     doc_v0["versionId"] = 0
     cid = derive_version_cid(doc_v0)
     scid = derive_scid(cid, scid_ver=scid_ver)

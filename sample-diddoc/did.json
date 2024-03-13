@@ -2,37 +2,35 @@
   "@context": [
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/data-integrity/v2",
-    "https://w3id.org/security/suites/jws-2020/v1"
+    "https://w3id.org/security/suites/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1hbd8sfarotmnykq142lfjsf1",
-  "created": "2024-03-13T14:33:05",
-  "updated": "2024-03-13T14:33:06",
+  "id": "did:webnext:example.com:133e7vyds5zpbakz9evnfhdmc",
+  "created": "2024-03-13T15:10:52",
+  "updated": "2024-03-13T15:10:52",
   "authentication": [
-    "#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic"
+    "#uD4WZ4jh3uVX2lM7yLV2WSmy03vY3M9fWNHP3gUidrM"
   ],
   "verificationMethod": [
     {
-      "id": "#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic",
-      "publicKeyJwk": {
-        "crv": "Ed25519",
-        "kty": "OKP",
-        "x": "poLhOlXC0tkt_2Od51p_Zc-1n7y55hXwmx13g07Zbx4"
-      }
+      "id": "#uD4WZ4jh3uVX2lM7yLV2WSmy03vY3M9fWNHP3gUidrM",
+      "type": "Multikey",
+      "controller": "did:webnext:example.com:133e7vyds5zpbakz9evnfhdmc",
+      "publicKeyMultibase": "z6MkrnUZcchs4SuUd8uSaexPVMBQjQG8vG2qAGQFKbM4pcjn"
     }
   ],
   "versionId": 2,
-  "previousHash": "z4EBG9jCJvoFmP149yeEksPTFw1khE7gqv3tcVmS11iP6sxPFgN",
+  "previousHash": "z4EBG9j3fuTaGBJVE2obQ1qPqnWaWfyHewyazLiti34LSa5HxQW",
   "alsoKnownAs": [
     "did:web:example.com"
   ],
   "proof": [
     {
       "type": "DataIntegrityProof",
-      "ciphersuite": "eddsa-jcs-2022",
-      "verificationMethod": "did:webnext:example.com:1hbd8sfarotmnykq142lfjsf1#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:webnext:example.com:133e7vyds5zpbakz9evnfhdmc#uD4WZ4jh3uVX2lM7yLV2WSmy03vY3M9fWNHP3gUidrM",
+      "created": "2024-03-13T15:10:52",
       "proofPurpose": "authentication",
-      "created": "2024-03-13T14:33:06",
-      "signature": "2VPB1GnMv-HeVmPcpwRbEBxpXHOYrrRlS66dHnMBoElTCk--e7NXrBGtEIVC7ok-R5Ioj1KgW8ru7a8VXBWdAQ"
+      "proofValue": "z47yb1E5iBS7r5aTbnRSLv3rCxm575AiskSwtznZm1yz3sMHZEkUX8fiKraqLketNjFc1UmTycpjUNB6WRz5UPmkt"
     }
   ]
 }

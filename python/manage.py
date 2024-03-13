@@ -13,11 +13,11 @@ import dag_json
 import jsoncanon
 
 from base58 import b58encode
-from multiformats import CID
+from multiformats import CID, multibase, multicodec
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
-JWS_CONTEXT = "https://w3id.org/security/suites/jws-2020/v1"
 DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
+MKEY_CONTEXT = "https://w3id.org/security/suites/multikey/v1"
 METHOD = "webnext"
 PLACEHOLDER = "{{SCID}}"
 LOG_FILENAME = "did.json.log"
@@ -194,7 +194,7 @@ def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
     """
     now = datetime.now().isoformat(timespec="seconds")
     doc = {
-        "@context": [DID_CONTEXT, DI_CONTEXT, JWS_CONTEXT],
+        "@context": [DID_CONTEXT, DI_CONTEXT, MKEY_CONTEXT],
         "id": f"did:webnext:{domain}:{PLACEHOLDER}",
         "created": now,
         "updated": now,
@@ -204,11 +204,16 @@ def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
     }
     for key in keys:
         kid = "#" + key.get_jwk_thumbprint()
+        mkey = multibase.encode(
+            multicodec.wrap("ed25519-pub", key.get_public_bytes()), "base58btc"
+        )
         doc["authentication"].append(kid)
         doc["verificationMethod"].append(
             {
                 "id": kid,
-                "publicKeyJwk": json.loads(key.get_jwk_public()),
+                "type": "Multikey",
+                "controller": doc["id"],
+                "publicKeyMultibase": mkey,
             }
         )
     return json.dumps(doc, indent=2)
@@ -258,19 +263,15 @@ def verify_scid(document: Union[dict, str]):
 def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
     proof = {
         "type": "DataIntegrityProof",
-        "ciphersuite": "eddsa-jcs-2022",
+        "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": kid,
-        "proofPurpose": "authentication",
         "created": datetime.now().isoformat(timespec="seconds"),
+        "proofPurpose": "authentication",
     }
     data_hash = sha256(jsoncanon.canonicalize(document)).digest()
     options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
-    proof["signature"] = (
-        base64.urlsafe_b64encode(key.sign_message(sig_input))
-        .decode("ascii")
-        .rstrip("=")
-    )
+    proof["proofValue"] = multibase.encode(key.sign_message(sig_input), "base58btc")
     return proof
 
 

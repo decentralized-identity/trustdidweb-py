@@ -1,0 +1,35 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/data-integrity/v2",
+    "https://w3id.org/security/suites/jws-2020/v1"
+  ],
+  "id": "did:webnext:example.com:1hbd8sfarotmnykq142lfjsf1",
+  "created": "2024-03-13T14:33:05",
+  "updated": "2024-03-13T14:33:05",
+  "authentication": [
+    "#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic"
+  ],
+  "verificationMethod": [
+    {
+      "id": "#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic",
+      "publicKeyJwk": {
+        "crv": "Ed25519",
+        "kty": "OKP",
+        "x": "poLhOlXC0tkt_2Od51p_Zc-1n7y55hXwmx13g07Zbx4"
+      }
+    }
+  ],
+  "versionId": 1,
+  "previousHash": "z4EBG9jGJPR3PramU5nwZ6RMje3oQACodxSFRVaeSruCmP7mGBo",
+  "proof": [
+    {
+      "type": "DataIntegrityProof",
+      "ciphersuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:webnext:example.com:1hbd8sfarotmnykq142lfjsf1#I1u41oePSF9J-h8diZvIigcZsGfAXJ2dXiZ0u9EC5Ic",
+      "proofPurpose": "authentication",
+      "created": "2024-03-13T14:33:06",
+      "signature": "k5jlTRLRHuZTriIg4TDfKR7fbQh-b2oaQcSnaRDP8rZG0GtKhhr8smXUalSOmwcxPEMKAv_2La64Z0bCENd6AA"
+    }
+  ]
+}

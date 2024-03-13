@@ -19,6 +19,7 @@ DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 JWS_CONTEXT = "https://w3id.org/security/suites/jws-2020/v1"
 DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
 METHOD = "webnext"
+PLACEHOLDER = "{{SCID}}"
 
 
 @dataclass
@@ -26,18 +27,20 @@ class KeyAlgorithm:
     name: str
 
 
-async def auto_generate_did(key_alg: KeyAlgorithm, pass_key: str, scid_ver=1):
+async def auto_generate_did(
+    domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
+):
     key = aries_askar.Key.generate(key_alg.name)
     kid = key.get_jwk_thumbprint()
     print(f"Generated inception key ({key_alg.name}): {kid}")
-    doc_v0 = genesis_document([key])
+    doc_v0 = genesis_document(domain, [key])
     cid_v0 = derive_version_cid(doc_v0)
     scid = derive_scid(cid_v0, scid_ver=scid_ver)
     print(f"Generated SCID: {scid}")
-    doc_id = f"did:{METHOD}:{scid}"
+    doc_id = f"did:{METHOD}:{domain}:{scid}"
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
-    doc_v1 = json.loads(doc_v0.replace("{{SCID}}", scid))
+    doc_v1 = json.loads(doc_v0.replace(PLACEHOLDER, scid))
     doc_v1["versionId"] = 1
     doc_v1["previousHash"] = cid_v0.encode()
     cid_v1 = derive_version_cid(doc_v1).encode()
@@ -77,7 +80,7 @@ async def auto_generate_did(key_alg: KeyAlgorithm, pass_key: str, scid_ver=1):
     print(f"Wrote document to {doc_dir}")
 
 
-def genesis_document(keys: list[aries_askar.Key]) -> str:
+def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
     """
     Generate a standard genesis document from a set of verification keys.
 
@@ -86,7 +89,7 @@ def genesis_document(keys: list[aries_askar.Key]) -> str:
     now = datetime.now().isoformat(timespec="seconds")
     doc = {
         "@context": [DID_CONTEXT, DI_CONTEXT, JWS_CONTEXT],
-        "id": "did:webnext:{{SCID}}",
+        "id": f"did:webnext:{domain}:{PLACEHOLDER}",
         "created": now,
         "updated": now,
         "authentication": [],
@@ -136,7 +139,7 @@ def verify_scid(document: Union[dict, str]):
         raise RuntimeError("Missing or invalid document id")
     pfx_id, doc_scid = doc_id.rsplit(":", 1)
     scid_ver = int(doc_scid[:1])
-    plc_id = pfx_id + ":{{SCID}}"
+    plc_id = f"{pfx_id}:{PLACEHOLDER}"
     doc_v0 = json.loads(doc_json.replace(doc_id, plc_id))
     del doc_v0["previousHash"]
     doc_v0["versionId"] = 0
@@ -166,5 +169,7 @@ def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
 
 
 asyncio.run(
-    auto_generate_did(KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1)
+    auto_generate_did(
+        "example.com", KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1
+    )
 )

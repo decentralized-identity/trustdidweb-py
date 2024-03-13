@@ -20,6 +20,8 @@ JWS_CONTEXT = "https://w3id.org/security/suites/jws-2020/v1"
 DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
 METHOD = "webnext"
 PLACEHOLDER = "{{SCID}}"
+LOG_FILENAME = "did.json.log"
+STORE_FILENAME = "keys.sqlite"
 
 
 @dataclass
@@ -27,9 +29,36 @@ class KeyAlgorithm:
     name: str
 
 
+@dataclass
+class LogEntry:
+    hash: str
+    version_date: str
+    version_id: int
+
+    def from_json(entry: str) -> "LogEntry":
+        entry = json.loads(entry)
+        hash = entry.get("hash")
+        if not isinstance(hash, str):
+            raise RuntimeError()
+        date = entry.get("versionDate")
+        if not isinstance(date, str):
+            raise RuntimeError()
+        ver = int(entry.get("versionId"))
+        return LogEntry(hash=hash, version_date=date, version_id=ver)
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "hash": self.hash,
+                "versionDate": self.version_date,
+                "versionId": self.version_id,
+            }
+        )
+
+
 async def auto_generate_did(
     domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
-):
+) -> str:
     key = aries_askar.Key.generate(key_alg.name)
     kid = key.get_jwk_thumbprint()
     print(f"Generated inception key ({key_alg.name}): {kid}")
@@ -45,20 +74,8 @@ async def auto_generate_did(
     doc_v1["previousHash"] = cid_v0.encode()
     cid_v1 = derive_version_cid(doc_v1).encode()
 
-    with open(doc_dir.joinpath("did.json.log"), "w") as out:
-        print(
-            json.dumps(
-                {
-                    "hash": cid_v1,
-                    "versionDate": doc_v1["updated"],
-                    "versionId": 1,
-                }
-            ),
-            file=out,
-        )
-
     store = await aries_askar.Store.provision(
-        f"sqlite://{doc_dir.name}/keys.sqlite", pass_key=pass_key
+        f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
     )
     async with store.session() as session:
         await session.insert_key(kid, key)
@@ -69,15 +86,104 @@ async def auto_generate_did(
 
     doc_v1["proof"] = [eddsa_sign(doc_v1, key, f"{doc_id}#{kid}")]
 
-    pretty = json.dumps(doc_v1, indent=2)
-    with open(doc_dir.joinpath(f"did-{cid_v1}.json"), "w") as out:
+    write_document(doc_v1, cid_v1, doc_dir)
+
+    return doc_dir
+
+
+def write_document(document: dict, cid: str, doc_dir: Path):
+    version = str(document["versionId"])
+    pretty = json.dumps(document, indent=2)
+
+    with open(doc_dir.joinpath(LOG_FILENAME), "a+") as out:
+        print(
+            LogEntry(
+                hash=cid,
+                version_date=document["updated"],
+                version_id=document["versionId"],
+            ).to_json(),
+            file=out,
+        )
+    with open(doc_dir.joinpath(f"did-{cid}.json"), "w") as out:
         print(pretty, file=out)
-    with open(doc_dir.joinpath(f"did-v1.json"), "w") as out:
+    with open(doc_dir.joinpath(f"did-{version}.json"), "w") as out:
         print(pretty, file=out)
     with open(doc_dir.joinpath(f"did.json"), "w") as out:
         print(pretty, file=out)
+    print(f"Wrote document v{version} to {doc_dir}")
 
-    print(f"Wrote document to {doc_dir}")
+
+def load_log(path: Union[str, Path]) -> list[LogEntry]:
+    ret = []
+    index = 1
+    for line in open(path):
+        if not line:
+            continue
+        entry = LogEntry.from_json(line)
+        if entry.version_id != index:
+            raise RuntimeError("Invalid log")
+        ret.append(entry)
+    if not ret:
+        raise RuntimeError("Invalid log")
+    return ret
+
+
+async def update_document(dir_path: str, pass_key: str):
+    doc_dir = Path(dir_path)
+    if not doc_dir.is_dir():
+        raise RuntimeError(f"Missing document directory: {dir_path}")
+    doc_path = doc_dir.joinpath("did.json")
+    log_path = doc_dir.joinpath(LOG_FILENAME)
+    store_path = doc_dir.joinpath(STORE_FILENAME)
+    if not doc_path.is_file():
+        raise RuntimeError(f"Missing document file: {doc_path}")
+    if not log_path.is_file():
+        raise RuntimeError(f"Missing log file: {log_path}")
+    log = load_log(log_path)
+    latest = log[-1]
+
+    with open(doc_path) as infile:
+        document = json.load(infile)
+    doc_id = document.get("id")
+    ver = document.get("versionId")
+    if not isinstance(ver, int):
+        raise RuntimeError("Invalid document version")
+    if ver == latest.version_id:
+        # update version
+        document["versionId"] += 1
+    elif ver != latest.version_id + 1:
+        # accept updated version
+        raise RuntimeError("Invalid document version")
+    document["previousHash"] = latest.hash
+    # FIXME accept an updated date?
+    document["updated"] = datetime.now().isoformat(timespec="seconds")
+    if "proof" in document:
+        del document["proof"]
+
+    # look up the signing key
+    # FIXME: check authentication block and resolve references
+    kid = None
+    for ver_method in document["verificationMethod"]:
+        kid = ver_method.get("id")
+        if not isinstance(kid, str):
+            raise RuntimeError("Invalid verification method")
+        kid = kid.removeprefix(doc_id).lstrip("#")
+        break
+    if not kid:
+        raise RuntimeError("Error determining signing key")
+
+    store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
+    async with store.session() as session:
+        key_entry = await session.fetch_key(kid)
+        if not key_entry:
+            raise RuntimeError(f"Key not found: {kid}")
+        key = key_entry.key
+    await store.close()
+
+    cid = derive_version_cid(document).encode()
+    document["proof"] = [eddsa_sign(document, key, f"{doc_id}#{kid}")]
+
+    write_document(document, cid, doc_dir)
 
 
 def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
@@ -168,8 +274,11 @@ def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
     return proof
 
 
-asyncio.run(
-    auto_generate_did(
+async def demo():
+    doc_dir = await auto_generate_did(
         "example.com", KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1
     )
-)
+    await update_document(doc_dir, pass_key="password")
+
+
+asyncio.run(demo())

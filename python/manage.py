@@ -58,7 +58,7 @@ class LogEntry:
 
 async def auto_generate_did(
     domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
-) -> str:
+) -> Path:
     key = aries_askar.Key.generate(key_alg.name)
     kid = key.get_jwk_thumbprint()
     print(f"Generated inception key ({key_alg.name}): {kid}")
@@ -106,7 +106,7 @@ def write_document(document: dict, cid: str, doc_dir: Path):
         )
     with open(doc_dir.joinpath(f"did-{cid}.json"), "w") as out:
         print(pretty, file=out)
-    with open(doc_dir.joinpath(f"did-{version}.json"), "w") as out:
+    with open(doc_dir.joinpath(f"did-v{version}.json"), "w") as out:
         print(pretty, file=out)
     with open(doc_dir.joinpath(f"did.json"), "w") as out:
         print(pretty, file=out)
@@ -278,6 +278,11 @@ async def demo():
     doc_dir = await auto_generate_did(
         "example.com", KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1
     )
+    with open(doc_dir.joinpath("did.json")) as infile:
+        doc = json.load(infile)
+    doc["alsoKnownAs"] = ["did:web:example.com"]
+    with open(doc_dir.joinpath("did.json"), "w") as outfile:
+        json.dump(doc, outfile)
     await update_document(doc_dir, pass_key="password")
 
 

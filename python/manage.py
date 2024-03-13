@@ -17,6 +17,7 @@ from multiformats import CID
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 JWS_CONTEXT = "https://w3id.org/security/suites/jws-2020/v1"
+DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
 METHOD = "webnext"
 
 
@@ -84,7 +85,7 @@ def genesis_document(keys: list[aries_askar.Key]) -> str:
     """
     now = datetime.now().isoformat(timespec="seconds")
     doc = {
-        "@context": [DID_CONTEXT, JWS_CONTEXT],
+        "@context": [DID_CONTEXT, DID_CONTEXT, JWS_CONTEXT],
         "id": "did:webnext:{{SCID}}",
         "created": now,
         "updated": now,

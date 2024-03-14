@@ -1,0 +1,25 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://anoncreds.example/context/v1"
+  ],
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/schema/verified-person/1.0.0",
+  "type": ["VerifiableCredential", "AnoncredsDefinition"],
+  "issuer": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+  "issuanceDate": "2024-03-10T04:24:12Z",
+  "credentialSubject": {
+    "id": "#definition",
+    "type": "AnoncredsSchema",
+    "name": "verified-person",
+    "version": "1.0.0",
+    "attrNames": ["id", "name"]
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
+    "created": "2024-03-10T18:29:08Z",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z38ereR1yomGS7S1sSvw3C5nWtn4MmmENM4jzsvbugcE3etSscreEg96HTq4C9CzRJ6BvrscUAeQsRsBKVUfDmJGY"
+  }
+}

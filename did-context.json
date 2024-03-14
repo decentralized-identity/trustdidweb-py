@@ -1,0 +1,22 @@
+{
+  "@context": {
+    "@protected": true,
+
+    "created": {
+      "@id": "http://purl.org/dc/terms/created",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "updated": {
+      "@id": "http://purl.org/dc/terms/modified",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "versionId": {
+      "@id": "https://schema.org/version",
+      "@type": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    "previousHash": {
+      "@id": "http://purl.org/dc/terms/replaces",
+      "@type": "https://w3id.org/security#multibase"
+    }
+  }
+}

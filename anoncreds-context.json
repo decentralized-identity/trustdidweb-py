@@ -1,37 +1,41 @@
 {
-  "ac": "https://anoncreds.example/context/v1#",
+  "@context": {
+    "@protected": true,
 
-  "AnoncredsMetadata": {
-    "@id": "ac:meta",
-    "@context": {
-      "@protected": true
-    }
-  },
-  "AnoncredsSchema": {
-    "@id": "ac:schema",
-    "@context": {
-      "@protected": true,
-      "schemaName": "ac:schemaName",
-      "version": "ac:version",
-      "attrNames": {
-        "@id": "ac:attrNames",
-        "@container": "@list"
+    "ac": "https://anoncreds.example/context/v1#",
+
+    "AnoncredsMetadata": {
+      "@id": "ac:meta",
+      "@context": {
+        "@protected": true
       }
-    }
-  },
-  "AnoncredsCredentialDefinition": {
-    "@id": "ac:credentialDefinition",
-    "@context": {
-      "@protected": true,
-      "schemaId": {
-        "@id": "ac:schemaId",
-        "@type": "@id"
-      },
-      "signatureType": "ac:signatureType",
-      "tag": "ac:tag",
-      "value": {
-        "@id": "ac:value",
-        "@type": "@json"
+    },
+    "AnoncredsSchema": {
+      "@id": "ac:schema",
+      "@context": {
+        "@protected": true,
+        "schemaName": "ac:schemaName",
+        "version": "ac:version",
+        "attrNames": {
+          "@id": "ac:attrNames",
+          "@container": "@list"
+        }
+      }
+    },
+    "AnoncredsCredentialDefinition": {
+      "@id": "ac:credentialDefinition",
+      "@context": {
+        "@protected": true,
+        "schemaId": {
+          "@id": "ac:schemaId",
+          "@type": "@id"
+        },
+        "signatureType": "ac:signatureType",
+        "tag": "ac:tag",
+        "value": {
+          "@id": "ac:value",
+          "@type": "@json"
+        }
       }
     }
   }

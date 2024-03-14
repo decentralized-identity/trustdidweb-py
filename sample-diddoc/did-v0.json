@@ -1,0 +1,22 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/data-integrity/v2",
+    "https://w3id.org/security/suites/multikey/v1"
+  ],
+  "id": "did:webnext:example.com:{{SCID}}",
+  "created": "2024-03-14T16:37:25Z",
+  "updated": "2024-03-14T16:37:25Z",
+  "authentication": [
+    "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM"
+  ],
+  "verificationMethod": [
+    {
+      "id": "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM",
+      "type": "Multikey",
+      "controller": "did:webnext:example.com:{{SCID}}",
+      "publicKeyMultibase": "z6MkwX8kG4ME89hM7p3B1JtekRUgxrAZWUKKHCmBhqnaXPms"
+    }
+  ],
+  "versionId": 0
+}

@@ -2,14 +2,15 @@ import asyncio
 import json
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
-from typing import Union
+from typing import Generator, Optional, Tuple, Union
 
 import aries_askar
 import dag_json
 import jsoncanon
+import jsonpatch
 
 from base58 import b58encode
 from multiformats import CID, multibase, multicodec
@@ -28,50 +29,28 @@ class KeyAlgorithm:
     name: str
 
 
-@dataclass
-class LogEntry:
-    hash: str
-    version_date: str
-    version_id: int
-
-    def from_json(entry: str) -> "LogEntry":
-        entry = json.loads(entry)
-        hash = entry.get("hash")
-        if not isinstance(hash, str):
-            raise RuntimeError()
-        date = entry.get("versionDate")
-        if not isinstance(date, str):
-            raise RuntimeError()
-        ver = int(entry.get("versionId"))
-        return LogEntry(hash=hash, version_date=date, version_id=ver)
-
-    def to_json(self) -> str:
-        return json.dumps(
-            {
-                "hash": self.hash,
-                "versionDate": self.version_date,
-                "versionId": self.version_id,
-            }
-        )
-
-
 async def auto_generate_did(
     domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
 ) -> Path:
     key = aries_askar.Key.generate(key_alg.name)
     kid = key.get_jwk_thumbprint()
     print(f"Generated inception key ({key_alg.name}): {kid}")
-    doc_v0 = genesis_document(domain, [key])
-    cid_v0 = derive_version_cid(doc_v0)
-    scid = derive_scid(cid_v0, scid_ver=scid_ver)
+    doc_v0_str = genesis_document(domain, [key])
+    doc_v0 = json.loads(doc_v0_str)
+    cid_v0_obj = derive_version_cid(doc_v0)
+    cid_v0 = cid_v0_obj.encode()
+
+    scid = derive_scid(cid_v0_obj, scid_ver=scid_ver)
     print(f"Generated SCID: {scid}")
+
     doc_id = f"did:{METHOD}:{domain}:{scid}"
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
-    doc_v1 = json.loads(doc_v0.replace(PLACEHOLDER, scid))
+    write_document(doc_v0, None, doc_dir, cid=cid_v0)
+
+    doc_v1 = json.loads(doc_v0_str.replace(PLACEHOLDER, scid))
     doc_v1["versionId"] = 1
-    doc_v1["previousHash"] = cid_v0.encode()
-    cid_v1 = derive_version_cid(doc_v1).encode()
+    doc_v1["previousHash"] = cid_v0
 
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
@@ -85,46 +64,57 @@ async def auto_generate_did(
 
     doc_v1["proof"] = [eddsa_sign(doc_v1, key, f"{doc_id}#{kid}")]
 
-    write_document(doc_v1, cid_v1, doc_dir)
+    write_document(doc_v1, doc_v0, doc_dir)
 
     return doc_dir
 
 
-def write_document(document: dict, cid: str, doc_dir: Path):
-    version = str(document["versionId"])
+def write_document(
+    document: dict, prev_document: Optional[dict], doc_dir: Path, cid: str = None
+):
+    version = document["versionId"]
+    updated = document["updated"]
     pretty = json.dumps(document, indent=2)
+    if not cid:
+        cid = derive_version_cid(document).encode()
+    diff = jsonpatch.make_patch(prev_document, document).patch
 
     with open(doc_dir.joinpath(LOG_FILENAME), "a+") as out:
-        print(
-            LogEntry(
-                hash=cid,
-                version_date=document["updated"],
-                version_id=document["versionId"],
-            ).to_json(),
-            file=out,
-        )
-    with open(doc_dir.joinpath(f"did-{cid}.json"), "w") as out:
-        print(pretty, file=out)
+        print(json.dumps([cid, updated, diff]), file=out)
     with open(doc_dir.joinpath(f"did-v{version}.json"), "w") as out:
         print(pretty, file=out)
-    with open(doc_dir.joinpath(f"did.json"), "w") as out:
-        print(pretty, file=out)
+    if prev_document:
+        with open(doc_dir.joinpath(f"did.json"), "w") as out:
+            print(pretty, file=out)
     print(f"Wrote document v{version} to {doc_dir}")
 
 
-def load_log(path: Union[str, Path]) -> list[LogEntry]:
-    ret = []
-    index = 1
+def load_log(
+    path: Union[str, Path], verify_hash: bool
+) -> Generator[Tuple[str, list], None, None]:
+    """This currently loads every document version into memory."""
+    index = 0
+    doc = None
     for line in open(path):
         if not line:
             continue
-        entry = LogEntry.from_json(line)
-        if entry.version_id != index:
-            raise RuntimeError("Invalid log")
-        ret.append(entry)
-    if not ret:
-        raise RuntimeError("Invalid log")
-    return ret
+        parts = json.loads(line)
+        if not isinstance(parts, list) or len(parts) != 3:
+            raise RuntimeError("Invalid log: not parsable")
+        (hash, updated, diff) = parts
+        doc = jsonpatch.apply_patch(doc, diff)
+        if doc.get("versionId") != index:
+            raise RuntimeError("Invalid log: inconsistent version")
+        if doc.get("updated") != updated:
+            raise RuntimeError("Invalid log: update time mismatch")
+        if verify_hash:
+            check_hash = derive_version_cid(doc).encode()
+            if check_hash != hash:
+                raise RuntimeError("Invalid log: hash mismatch")
+        yield (hash, doc.copy())
+        index += 1
+    if not index:
+        raise RuntimeError("Invalid log: no entries")
 
 
 async def update_document(dir_path: str, pass_key: str):
@@ -138,8 +128,7 @@ async def update_document(dir_path: str, pass_key: str):
         raise RuntimeError(f"Missing document file: {doc_path}")
     if not log_path.is_file():
         raise RuntimeError(f"Missing log file: {log_path}")
-    log = load_log(log_path)
-    latest = log[-1]
+    *_, (latest_hash, latest_doc) = load_log(log_path, verify_hash=True)
 
     with open(doc_path) as infile:
         document = json.load(infile)
@@ -147,15 +136,15 @@ async def update_document(dir_path: str, pass_key: str):
     ver = document.get("versionId")
     if not isinstance(ver, int):
         raise RuntimeError("Invalid document version")
-    if ver == latest.version_id:
+    if ver == latest_doc["versionId"]:
         # update version
         document["versionId"] += 1
-    elif ver != latest.version_id + 1:
+    elif ver != latest_doc["versionId"] + 1:
         # accept updated version
         raise RuntimeError("Invalid document version")
-    document["previousHash"] = latest.hash
+    document["previousHash"] = latest_hash
     # FIXME accept an updated date?
-    document["updated"] = datetime.now().isoformat(timespec="seconds")
+    document["updated"] = format_datetime(datetime.now(timezone.utc))
     if "proof" in document:
         del document["proof"]
 
@@ -179,10 +168,9 @@ async def update_document(dir_path: str, pass_key: str):
         key = key_entry.key
     await store.close()
 
-    cid = derive_version_cid(document).encode()
     document["proof"] = [eddsa_sign(document, key, f"{doc_id}#{kid}")]
 
-    write_document(document, cid, doc_dir)
+    write_document(document, latest_doc, doc_dir)
 
 
 def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
@@ -191,7 +179,7 @@ def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
 
     The exact format of this document may change over time.
     """
-    now = datetime.now().isoformat(timespec="seconds")
+    now = format_datetime(datetime.now(timezone.utc))
     doc = {
         "@context": [DID_CONTEXT, DI_CONTEXT, MKEY_CONTEXT],
         "id": f"did:webnext:{domain}:{PLACEHOLDER}",
@@ -262,7 +250,7 @@ def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": kid,
-        "created": datetime.now().isoformat(timespec="seconds"),
+        "created": format_datetime(datetime.now(timezone.utc)),
         "proofPurpose": "authentication",
     }
     data_hash = sha256(jsoncanon.canonicalize(document)).digest()
@@ -270,6 +258,10 @@ def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
     sig_input = data_hash + options_hash
     proof["proofValue"] = multibase.encode(key.sign_message(sig_input), "base58btc")
     return proof
+
+
+def format_datetime(dt: datetime) -> str:
+    return dt.isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 async def demo():

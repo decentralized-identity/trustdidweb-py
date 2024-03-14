@@ -29,13 +29,28 @@ class KeyAlgorithm:
     name: str
 
 
+@dataclass
+class VerificationMethod:
+    key: aries_askar.Key
+    kid: str
+    pk_codec: str
+
+    def from_key(key: aries_askar.Key, kid: str = None) -> "VerificationMethod":
+        if not kid:
+            kid = key.get_jwk_thumbprint()
+        if key.algorithm == aries_askar.KeyAlg.ED25519:
+            pk_codec = "ed25519-pub"
+        else:
+            raise RuntimeError("Unsupported key algorithm")
+        return VerificationMethod(key=key, kid=kid, pk_codec=pk_codec)
+
+
 async def auto_generate_did(
     domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
 ) -> Path:
-    key = aries_askar.Key.generate(key_alg.name)
-    kid = key.get_jwk_thumbprint()
-    print(f"Generated inception key ({key_alg.name}): {kid}")
-    doc_v0_str = genesis_document(domain, [key])
+    sk = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
+    print(f"Generated inception key ({key_alg.name}): {sk.kid}")
+    doc_v0_str = genesis_document(domain, [sk])
     doc_v0 = json.loads(doc_v0_str)
     cid_v0_obj = derive_version_cid(doc_v0)
     cid_v0 = cid_v0_obj.encode()
@@ -56,13 +71,13 @@ async def auto_generate_did(
         f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
     )
     async with store.session() as session:
-        await session.insert_key(kid, key)
+        await session.insert_key(sk.kid, sk.key)
     await store.close()
 
     # debug: checking the SCID derivation
     verify_scid(doc_v1)
 
-    doc_v1["proof"] = [eddsa_sign(doc_v1, key, f"{doc_id}#{kid}")]
+    doc_v1["proof"] = eddsa_sign(doc_v1, sk)
 
     write_document(doc_v1, doc_v0, doc_dir)
 
@@ -165,15 +180,15 @@ async def update_document(dir_path: str, pass_key: str):
         key_entry = await session.fetch_key(kid)
         if not key_entry:
             raise RuntimeError(f"Key not found: {kid}")
-        key = key_entry.key
+        sk = VerificationMethod.from_key(key_entry.key, kid=kid)
     await store.close()
 
-    document["proof"] = [eddsa_sign(document, key, f"{doc_id}#{kid}")]
+    document["proof"] = eddsa_sign(document, sk)
 
     write_document(document, latest_doc, doc_dir)
 
 
-def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
+def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
     """
     Generate a standard genesis document from a set of verification keys.
 
@@ -189,10 +204,10 @@ def genesis_document(domain: str, keys: list[aries_askar.Key]) -> str:
         "verificationMethod": [],
         "versionId": 0,
     }
-    for key in keys:
-        kid = "#" + key.get_jwk_thumbprint()
+    for vm in keys:
+        kid = "#" + vm.kid
         mkey = multibase.encode(
-            multicodec.wrap("ed25519-pub", key.get_public_bytes()), "base58btc"
+            multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
         )
         doc["authentication"].append(kid)
         doc["verificationMethod"].append(
@@ -245,18 +260,18 @@ def verify_scid(document: Union[dict, str]):
         raise RuntimeError("SCID mismatch")
 
 
-def eddsa_sign(document: dict, key: aries_askar.Key, kid: str) -> dict:
+def eddsa_sign(document: dict, sk: VerificationMethod) -> dict:
     proof = {
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
-        "verificationMethod": kid,
+        "verificationMethod": sk.kid,
         "created": format_datetime(datetime.now(timezone.utc)),
         "proofPurpose": "authentication",
     }
     data_hash = sha256(jsoncanon.canonicalize(document)).digest()
     options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
-    proof["proofValue"] = multibase.encode(key.sign_message(sig_input), "base58btc")
+    proof["proofValue"] = multibase.encode(sk.key.sign_message(sig_input), "base58btc")
     return proof
 
 

@@ -2,35 +2,33 @@
   "@context": [
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/data-integrity/v2",
-    "https://w3id.org/security/suites/multikey/v1"
+    "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa",
-  "created": "2024-03-14T16:37:25Z",
-  "updated": "2024-03-14T16:37:25Z",
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+  "created": "2024-03-14T18:29:07Z",
+  "updated": "2024-03-14T18:29:08Z",
   "authentication": [
-    "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM"
+    "#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA"
   ],
   "verificationMethod": [
     {
-      "id": "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM",
+      "id": "#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa",
-      "publicKeyMultibase": "z6MkwX8kG4ME89hM7p3B1JtekRUgxrAZWUKKHCmBhqnaXPms"
+      "controller": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+      "publicKeyMultibase": "z6MkfaZnSBLKk37rCpUPBdPogJey2PfhSkq7ujZeBqbB4cnR"
     }
   ],
   "versionId": 2,
-  "previousHash": "z4EBG9j9GRk9RbMUB4Mzmitc8byqeA5cwK8KXvwMJJRhdHKQLxp",
+  "previousHash": "z4EBG9jAsLu4ny7Eq1rr6ZxSbJdbBF1NHX4tF6sczsurHnsm5qq",
   "alsoKnownAs": [
     "did:web:example.com"
   ],
-  "proof": [
-    {
-      "type": "DataIntegrityProof",
-      "cryptosuite": "eddsa-jcs-2022",
-      "verificationMethod": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM",
-      "created": "2024-03-14T16:37:26Z",
-      "proofPurpose": "authentication",
-      "proofValue": "z3vRZcKS8D3dZyLCUS6sURvAD379U3WYmc9VHWgmbLQqebcwBxbzsNkDz7X36AzU6ByuZx3bQ1sXiJcbGqZViSk9u"
-    }
-  ]
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
+    "created": "2024-03-14T18:29:08Z",
+    "proofPurpose": "authentication",
+    "proofValue": "z38ereR1yomGS7S1sSvw3C5nWtn4MmmENM4jzsvbugcE3etSscreEg96HTq4C9CzRJ6BvrscUAeQsRsBKVUfDmJGY"
+  }
 }

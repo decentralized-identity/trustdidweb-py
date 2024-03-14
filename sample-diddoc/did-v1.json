@@ -2,32 +2,30 @@
   "@context": [
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/data-integrity/v2",
-    "https://w3id.org/security/suites/multikey/v1"
+    "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa",
-  "created": "2024-03-14T16:37:25Z",
-  "updated": "2024-03-14T16:37:25Z",
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+  "created": "2024-03-14T18:29:07Z",
+  "updated": "2024-03-14T18:29:07Z",
   "authentication": [
-    "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM"
+    "#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA"
   ],
   "verificationMethod": [
     {
-      "id": "#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM",
+      "id": "#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa",
-      "publicKeyMultibase": "z6MkwX8kG4ME89hM7p3B1JtekRUgxrAZWUKKHCmBhqnaXPms"
+      "controller": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+      "publicKeyMultibase": "z6MkfaZnSBLKk37rCpUPBdPogJey2PfhSkq7ujZeBqbB4cnR"
     }
   ],
   "versionId": 1,
-  "previousHash": "z4EBG9jAHYCWBVNXmAqcMUssFPpadAme6YvDZQmnw6K2h4WFzby",
-  "proof": [
-    {
-      "type": "DataIntegrityProof",
-      "cryptosuite": "eddsa-jcs-2022",
-      "verificationMethod": "did:webnext:example.com:1bamuu3ddabrqeyntzy6sx6fa#L69yku8-mN0aS2kfpANKyz3LEEut_sGUHZbCgpgePQM",
-      "created": "2024-03-14T16:37:25Z",
-      "proofPurpose": "authentication",
-      "proofValue": "z496fHjjXTXJu41owktMeF3CF2yZx1ogKXb4q65uQVdqGx48rYYNtwonBm2NyxDCkfwoTJeDekQQSwj1Qt7waBMDW"
-    }
-  ]
+  "previousHash": "z4EBG9jAmzqH6pn4j4v4Y1tgnhMjxv3Jv85zJ1fKX142MdJkcDw",
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
+    "created": "2024-03-14T18:29:08Z",
+    "proofPurpose": "authentication",
+    "proofValue": "z3myuW8VJe42vayz3GyXvxwzjy9RmuTnwEK6XJ7FDYqHGxiEgjCzGiTYLmKJ5Wvs1YXk1zKxwSwoqVDJHBvcYG8WG"
+  }
 }

@@ -17,7 +17,7 @@ from multiformats import CID, multibase, multicodec
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
-MKEY_CONTEXT = "https://w3id.org/security/suites/multikey/v1"
+MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
 METHOD = "webnext"
 PLACEHOLDER = "{{SCID}}"
 LOG_FILENAME = "did.json.log"
@@ -102,7 +102,7 @@ def load_log(
         if not isinstance(parts, list) or len(parts) != 3:
             raise RuntimeError("Invalid log: not parsable")
         (hash, updated, diff) = parts
-        doc = jsonpatch.apply_patch(doc, diff)
+        doc = jsonpatch.apply_patch(doc, diff, in_place=True)
         if doc.get("versionId") != index:
             raise RuntimeError("Invalid log: inconsistent version")
         if doc.get("updated") != updated:

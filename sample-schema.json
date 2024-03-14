@@ -3,14 +3,14 @@
     "https://www.w3.org/ns/credentials/v2",
     "https://anoncreds.example/context/v1"
   ],
-  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/schema/verified-person/1.0.0",
-  "type": ["VerifiableCredential", "AnoncredsDefinition"],
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/anoncreds/schema/verified-person/1.0.0",
+  "type": ["VerifiableCredential", "AnoncredsMetadata"],
   "issuer": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
-  "issuanceDate": "2024-03-10T04:24:12Z",
+  "validFrom": "2024-03-10T04:24:12Z",
   "credentialSubject": {
-    "id": "#definition",
+    "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/anoncreds/schema/verified-person/1.0.0#definition",
     "type": "AnoncredsSchema",
-    "name": "verified-person",
+    "schemaName": "verified-person",
     "version": "1.0.0",
     "attrNames": ["id", "name"]
   },

@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import json
 
 from dataclasses import dataclass
@@ -224,8 +223,6 @@ def derive_version_cid(document: Union[dict, str]) -> CID:
         document = json.loads(document)
     else:
         document = document.copy()
-    if "proof" in document:
-        del document["proof"]
     if "previousHash" in document:
         document["previousHash"] = CID.decode(document["previousHash"])
     norm = dag_json.encode(document)

@@ -5,17 +5,17 @@
     "https://w3id.org/security/multikey/v1"
   ],
   "id": "did:webnext:example.com:{{SCID}}",
-  "created": "2024-03-14T21:09:05Z",
-  "updated": "2024-03-14T21:09:05Z",
+  "created": "2024-03-14T23:19:41Z",
+  "updated": "2024-03-14T23:19:41Z",
   "authentication": [
-    "#_bvsP2watalQeIYMPOdkwA5RyzADQYkndSEcDzOanrs"
+    "did:webnext:example.com:{{SCID}}#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I"
   ],
   "verificationMethod": [
     {
-      "id": "#_bvsP2watalQeIYMPOdkwA5RyzADQYkndSEcDzOanrs",
+      "id": "did:webnext:example.com:{{SCID}}#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I",
       "type": "Multikey",
       "controller": "did:webnext:example.com:{{SCID}}",
-      "publicKeyMultibase": "z6MkqfqtSCtJGS7vaxXy2A5HezLnepNAWms9HZXXgdW9VtwQ"
+      "publicKeyMultibase": "z6MkmbnumR16mcMwYaF3Go1it1FiZbfMB9PHUT3DnQf2MEGU"
     }
   ],
   "versionId": 0

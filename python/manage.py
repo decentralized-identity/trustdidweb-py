@@ -205,7 +205,7 @@ def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
         "versionId": 0,
     }
     for vm in keys:
-        kid = "#" + vm.kid
+        kid = doc["id"] + "#" + vm.kid
         mkey = multibase.encode(
             multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
         )

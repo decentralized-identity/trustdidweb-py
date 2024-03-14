@@ -264,7 +264,7 @@ def eddsa_sign(document: dict, sk: VerificationMethod) -> dict:
     proof = {
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
-        "verificationMethod": sk.kid,
+        "verificationMethod": document["id"] + "#" + sk.kid,
         "created": format_datetime(datetime.now(timezone.utc)),
         "proofPurpose": "authentication",
     }

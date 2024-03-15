@@ -105,31 +105,177 @@ def write_document(
 
 
 def load_log(
-    path: Union[str, Path], verify_hash: bool
+    path: Union[str, Path], verify_hash: bool, verify_signature: bool
 ) -> Generator[Tuple[str, list], None, None]:
     """This currently loads every document version into memory."""
     index = 0
     doc = None
+    prev_cid = None
+    prev_controllers = None
+    prev_auth_keys = None
+    genesis_doc_id = None
+    doc_id = None
+
     for line in open(path):
         if not line:
             continue
         parts = json.loads(line)
         if not isinstance(parts, list) or len(parts) != 3:
             raise RuntimeError("Invalid log: not parsable")
-        (hash, updated, diff) = parts
-        doc = jsonpatch.apply_patch(doc, diff, in_place=True)
+        (cid, updated, diff) = parts
+        doc = jsonpatch.apply_patch(doc, diff)
+        if not isinstance(doc, dict):
+            raise RuntimeError("Invalid log: invalid document")
+        if verify_hash:
+            check_cid = derive_version_cid(doc).encode()
+            if check_cid != cid:
+                raise RuntimeError("Invalid log: hash mismatch")
+        if doc.get("previousHash") != prev_cid:
+            raise RuntimeError("Invalid log: invalid previous hash")
         if doc.get("versionId") != index:
             raise RuntimeError("Invalid log: inconsistent version")
         if doc.get("updated") != updated:
             raise RuntimeError("Invalid log: update time mismatch")
-        if verify_hash:
-            check_hash = derive_version_cid(doc).encode()
-            if check_hash != hash:
-                raise RuntimeError("Invalid log: hash mismatch")
-        yield (hash, doc.copy())
+
+        check_id = doc.get("id")
+        if not isinstance(check_id, str):
+            raise RuntimeError("Invalid log: invalid document ID")
+        if index == 0:
+            if not check_id.endswith(":" + PLACEHOLDER):
+                raise RuntimeError("Invalid log: invalid placeholder document ID")
+            genesis_doc_id = check_id
+            doc_id = genesis_doc_id
+        elif index == 1:
+            if not check_id.startswith("did:"):
+                raise RuntimeError("Invalid log: invalid document ID")
+            pfx_id, doc_scid = check_id.rsplit(":", 1)
+            scid_ver = int(doc_scid[:1])
+            check_scid = derive_scid(prev_cid, scid_ver=scid_ver)
+            if genesis_doc_id != pfx_id + ":" + PLACEHOLDER or doc_scid != check_scid:
+                raise RuntimeError("Invalid log: invalid SCID derivation")
+            doc_id = check_id
+        else:
+            if check_id != doc_id:
+                raise RuntimeError("Invalid log: document ID has changed")
+
+        controllers = doc.get("controller")
+        if controllers is None:
+            controllers = [doc_id]
+        elif isinstance(controllers, str):
+            controllers = [controllers]
+        elif not isinstance(controllers, list):
+            raise RuntimeError("Invalid log: invalid controllers")
+
+        auth_keys = {}
+        if verify_signature:
+            vmethods = doc.get("verificationMethod", [])
+            vm_dict = {}
+            if not isinstance(vmethods, list):
+                raise RuntimeError("Invalid log: invalid verification methods")
+            for method in vmethods:
+                _ = parse_verification_method(method, doc_id, vm_dict)
+            auths = doc.get("authentication", [])
+            if not isinstance(auths, list):
+                raise RuntimeError("Invalid log: invalid authentication")
+            for auth in auths:
+                if isinstance(auth, str):
+                    if auth.startswith("#"):
+                        auth = doc_id + auth
+                    if not auth.startswith(doc_id + "#"):
+                        raise RuntimeError(
+                            "Invalid log: only local authentication keys supported"
+                        )
+                    if auth not in vm_dict:
+                        raise RuntimeError(
+                            f"Invalid log: invalid authentication key reference ({auth})"
+                        )
+                elif isinstance(auth, dict):
+                    auth = parse_verification_method(auth, doc_id, vm_dict)
+                auth_keys[auth] = vm_dict[auth]
+
+            if index > 0:
+                proofs = doc.get("proof", [])
+                if isinstance(proofs, dict):
+                    proofs = [proofs]
+                if not isinstance(proofs, list):
+                    raise RuntimeError("Invalid log: invalid or missing proof")
+                for proof in proofs:
+                    if not isinstance(proof, dict):
+                        raise RuntimeError("Invalid log: invalid proof")
+                    method_id = proof.get("verificationMethod")
+                    if not isinstance(method_id, str):
+                        raise RuntimeError(
+                            "Invalid log: invalid proof verification method"
+                        )
+                    if method_id.startswith("#"):
+                        method_id = doc_id + method_id
+                    if method_id not in auth_keys:
+                        raise RuntimeError(
+                            "Invalid log: cannot resolve verification method"
+                        )
+                    vmethod = auth_keys[method_id]
+                    if index == 1:
+                        # translate to match version 0 key with placeholder
+                        method_id = method_id.replace(doc_id, genesis_doc_id)
+                        cmp_vmethod = json.loads(
+                            json.dumps(vmethod).replace(doc_id, genesis_doc_id)
+                        )
+                    else:
+                        cmp_vmethod = vmethod
+                    if (
+                        not prev_auth_keys
+                        or prev_auth_keys.get(method_id) != cmp_vmethod
+                    ):
+                        raise RuntimeError(
+                            "Invalid log: proof verification method not found in previous version"
+                        )
+                    verify_proof(doc, proof, vmethod)
+
+        yield (cid, doc.copy())
+        prev_cid = cid
+        prev_controllers = controllers
+        prev_auth_keys = auth_keys
         index += 1
+
     if not index:
         raise RuntimeError("Invalid log: no entries")
+
+
+def parse_verification_method(method: dict, doc_id: str, method_dict: dict) -> str:
+    if not isinstance(method, dict):
+        raise RuntimeError("Invalid log: invalid verification methods")
+    method_id = method.get("id")
+    if not isinstance(method_id, str):
+        raise RuntimeError("Invalid log: invalid verification method ID")
+    if method_id.startswith("#"):
+        method_id = doc_id + method_id
+    if method_id in method_dict:
+        raise RuntimeError("Invalid log: duplicate verification method ID")
+    method_dict[method_id] = method
+    return method_id
+
+
+def verify_proof(document: dict, proof: dict, method: dict):
+    if proof.get("type") != "DataIntegrityProof":
+        raise RuntimeError("Unsupported proof type")
+    if proof.get("proofPurpose") != "authentication":
+        raise RuntimeError("Expected authentication proof purpose")
+    if proof.get("cryptosuite") != "eddsa-jcs-2022":
+        raise RuntimeError("Unsupported cryptosuite")
+    key_mc = multibase.decode(method.get("publicKeyMultibase"))
+    (codec, key_bytes) = multicodec.unwrap(key_mc)
+    if codec.name != "ed25519-pub":
+        raise RuntimeError("Unsupported key type")
+    key = aries_askar.Key.from_public_bytes("ed25519", key_bytes)
+    document = document.copy()
+    del document["proof"]
+    data_hash = sha256(jsoncanon.canonicalize(document)).digest()
+    proof = proof.copy()
+    signature = multibase.decode(proof.pop("proofValue"))
+    options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
+    sig_input = data_hash + options_hash
+    if not key.verify_signature(sig_input, signature):
+        raise RuntimeError("Invalid proof signature")
 
 
 async def update_document(dir_path: str, pass_key: str):
@@ -143,7 +289,10 @@ async def update_document(dir_path: str, pass_key: str):
         raise RuntimeError(f"Missing document file: {doc_path}")
     if not log_path.is_file():
         raise RuntimeError(f"Missing log file: {log_path}")
-    *_, (latest_hash, latest_doc) = load_log(log_path, verify_hash=True)
+    # FIXME in future only verifier needs to check signatures?
+    *_, (latest_hash, latest_doc) = load_log(
+        log_path, verify_hash=True, verify_signature=True
+    )
 
     with open(doc_path) as infile:
         document = json.load(infile)
@@ -233,13 +382,16 @@ def derive_version_cid(document: Union[dict, str]) -> CID:
     return CID(base="base58btc", version=1, codec="dag-json", digest=("sha2-256", hash))
 
 
-def derive_scid(cid: CID, scid_ver=1) -> str:
+def derive_scid(cid: Union[str, CID], scid_ver=1) -> str:
+    if isinstance(cid, str):
+        cid = CID.decode(cid)
     if scid_ver != 1:
         raise RuntimeError("Only SCID version 1 is supported")
     return "1" + b58encode(bytes(cid.raw_digest))[:24].decode("ascii").lower()
 
 
 def verify_scid(document: Union[dict, str]):
+    # FIXME can likely remove this method, this is checked in log verification
     if isinstance(document, str):
         doc_json = document
         document = json.loads(document)

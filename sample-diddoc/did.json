@@ -4,31 +4,31 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy",
-  "created": "2024-03-14T23:19:41Z",
-  "updated": "2024-03-14T23:19:41Z",
+  "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
+  "created": "2024-03-18T22:35:32Z",
+  "updated": "2024-03-18T22:35:32Z",
   "authentication": [
-    "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I"
+    "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I",
+      "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy",
-      "publicKeyMultibase": "z6MkmbnumR16mcMwYaF3Go1it1FiZbfMB9PHUT3DnQf2MEGU"
+      "controller": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
+      "publicKeyMultibase": "z6MkkTmB2yNHGd5UGzVK2qGo3mEPMuCArrTDRfHwbnSotbVe"
     }
   ],
   "versionId": 2,
-  "previousHash": "z4EBG9jD4EeeXGwsWvj8dhtnjxEWQsvs5EDm6kXuYSULeLMqqk6",
+  "previousHash": "baga6yaqseahfrr74bimwkq36xt5mx5gkdzxyv7lxy5jhtet7wml5lncc4vzc4",
   "alsoKnownAs": [
     "did:web:example.com"
   ],
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "eddsa-jcs-2022",
-    "verificationMethod": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I",
-    "created": "2024-03-14T23:19:42Z",
+    "verificationMethod": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
+    "created": "2024-03-18T22:35:33Z",
     "proofPurpose": "authentication",
-    "proofValue": "zv8Ln7CkeGYUFnxfZv9Yge6zyq7DskDV5eEJPRGBjSUvGuE7xpqG5gCs2VgEyErHg3fQXrL3Vm9kuW7WDjTfa9oz"
+    "proofValue": "z4iJBQ2CnH26shA2GJYDiSLSYkmrmvCsuLc2pYMKNrx6q2iJ8t48aQHTXwBfp9eoiBYDp1Vxzm7a3pMQ6XzKr6ryS"
   }
 }

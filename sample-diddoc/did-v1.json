@@ -4,28 +4,28 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy",
-  "created": "2024-03-14T23:19:41Z",
-  "updated": "2024-03-14T23:19:41Z",
+  "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
+  "created": "2024-03-18T22:35:32Z",
+  "updated": "2024-03-18T22:35:32Z",
   "authentication": [
-    "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I"
+    "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I",
+      "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy",
-      "publicKeyMultibase": "z6MkmbnumR16mcMwYaF3Go1it1FiZbfMB9PHUT3DnQf2MEGU"
+      "controller": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
+      "publicKeyMultibase": "z6MkkTmB2yNHGd5UGzVK2qGo3mEPMuCArrTDRfHwbnSotbVe"
     }
   ],
   "versionId": 1,
-  "previousHash": "z4EBG9jBQTfgQQq6S356ntX13bQXeUjpHGjhFn4td2bXbpASyZX",
+  "previousHash": "baga6yaqsedezj2sxwnsb5yhql6gbdlskwd3e7dw5qfwqb4anxnjw2j2qiidd4",
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "eddsa-jcs-2022",
-    "verificationMethod": "did:webnext:example.com:1chhp5g8g8rj58zc6hlj2u7yy#VknLjl6U86QV0wATUfEze0n4HzbsqnptS5H-7LPOD5I",
-    "created": "2024-03-14T23:19:41Z",
+    "verificationMethod": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
+    "created": "2024-03-18T22:35:32Z",
     "proofPurpose": "authentication",
-    "proofValue": "z2eB96e8jAMXjkP6yrEA4kwzeJ1RwMEgcHhEiHnhH8mMT2bEHyjmed5EfXyNSJvpF1hgRJCNWqtdyAsVifhv5amwQ"
+    "proofValue": "z4fFH2auUwSXUAbouN1cYK7nGNF3fVYqp7pN8fpc9vs1FsPeR5jiELax5FodESwRRrBwfvdpvyYgBLh9YsB5fTkjE"
   }
 }

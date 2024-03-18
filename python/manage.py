@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 
 from dataclasses import dataclass
@@ -8,11 +9,9 @@ from pathlib import Path
 from typing import Generator, Optional, Tuple, Union
 
 import aries_askar
-import dag_json
 import jsoncanon
 import jsonpatch
 
-from base58 import b58encode
 from multiformats import CID, multibase, multicodec
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
@@ -375,11 +374,9 @@ def derive_version_cid(document: Union[dict, str]) -> CID:
         document = json.loads(document)
     else:
         document = document.copy()
-    if "previousHash" in document:
-        document["previousHash"] = CID.decode(document["previousHash"])
-    norm = dag_json.encode(document)
+    norm = jsoncanon.canonicalize(document)
     hash = sha256(norm).digest()
-    return CID(base="base58btc", version=1, codec="dag-json", digest=("sha2-256", hash))
+    return CID(base="base32", version=1, codec="json-jcs", digest=("sha2-256", hash))
 
 
 def derive_scid(cid: Union[str, CID], scid_ver=1) -> str:
@@ -387,7 +384,7 @@ def derive_scid(cid: Union[str, CID], scid_ver=1) -> str:
         cid = CID.decode(cid)
     if scid_ver != 1:
         raise RuntimeError("Only SCID version 1 is supported")
-    return "1" + b58encode(bytes(cid.raw_digest))[:24].decode("ascii").lower()
+    return "1" + base64.b32encode(bytes(cid.raw_digest))[:24].decode("ascii").lower()
 
 
 def verify_scid(document: Union[dict, str]):

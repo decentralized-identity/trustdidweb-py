@@ -4,28 +4,27 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
-  "created": "2024-03-18T22:35:32Z",
-  "updated": "2024-03-18T22:35:32Z",
+  "id": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv",
+  "created": "2024-03-19T22:46:39Z",
+  "updated": "2024-03-19T22:46:39Z",
   "authentication": [
-    "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac"
+    "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
+      "id": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq",
-      "publicKeyMultibase": "z6MkkTmB2yNHGd5UGzVK2qGo3mEPMuCArrTDRfHwbnSotbVe"
+      "controller": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv",
+      "publicKeyMultibase": "z6MkhRF7KC1YarUuJLzKXs19tDD2MiS3YZH7K2gcGTKTJQQQ"
     }
   ],
   "versionId": 1,
-  "previousHash": "baga6yaqsedezj2sxwnsb5yhql6gbdlskwd3e7dw5qfwqb4anxnjw2j2qiidd4",
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "eddsa-jcs-2022",
-    "verificationMethod": "did:webnext:example.com:1zgkouv5tmqpob4c7rqi24svq#RwGu5fGZx8-UJJdTV8t70kKgeFRmFyjiVXL84q6FEac",
-    "created": "2024-03-18T22:35:32Z",
+    "verificationMethod": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q",
+    "created": "2024-03-19T22:46:39Z",
     "proofPurpose": "authentication",
-    "proofValue": "z4fFH2auUwSXUAbouN1cYK7nGNF3fVYqp7pN8fpc9vs1FsPeR5jiELax5FodESwRRrBwfvdpvyYgBLh9YsB5fTkjE"
+    "proofValue": "zp9URwsCH8HKbWsEcnX15CvJnGgCpmnq5YeYWskhoCreXfTysrYxWcfAiApEULTYXE8V93F5WiTssdkxkFw6nk53"
   }
 }

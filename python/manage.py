@@ -49,22 +49,18 @@ async def auto_generate_did(
 ) -> Path:
     sk = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
     print(f"Generated inception key ({key_alg.name}): {sk.kid}")
-    doc_v0_str = genesis_document(domain, [sk])
-    doc_v0 = json.loads(doc_v0_str)
-    cid_v0_obj = derive_version_cid(doc_v0)
-    cid_v0 = cid_v0_obj.encode()
+    genesis = genesis_document(domain, [sk])
+    doc_id, doc_v1 = update_scid(genesis, scid_ver=scid_ver)
+    print(f"Generated document: {doc_id}")
+    assert doc_v1.get("versionId") == 1
+    assert doc_v1.get("previousHash") is None
 
-    scid = derive_scid(cid_v0_obj, scid_ver=scid_ver)
-    print(f"Generated SCID: {scid}")
+    # debug: checking the SCID derivation
+    check_id, _ = update_scid(doc_v1)
+    assert check_id == doc_id
 
-    doc_id = f"did:{METHOD}:{domain}:{scid}"
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
-    write_document(doc_v0, None, doc_dir, cid=cid_v0)
-
-    doc_v1 = json.loads(doc_v0_str.replace(PLACEHOLDER, scid))
-    doc_v1["versionId"] = 1
-    doc_v1["previousHash"] = cid_v0
 
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
@@ -73,46 +69,46 @@ async def auto_generate_did(
         await session.insert_key(sk.kid, sk.key)
     await store.close()
 
-    # debug: checking the SCID derivation
-    verify_scid(doc_v1)
-
-    doc_v1["proof"] = eddsa_sign(doc_v1, sk)
-
-    write_document(doc_v1, doc_v0, doc_dir)
+    proof = eddsa_sign(doc_v1, sk)
+    write_document(doc_v1, None, doc_dir, proof=proof)
 
     return doc_dir
 
 
 def write_document(
-    document: dict, prev_document: Optional[dict], doc_dir: Path, cid: str = None
+    document: dict,
+    prev_document: Optional[dict],
+    doc_dir: Path,
+    cid: str = None,
+    proof: Optional[dict] = None,
 ):
     version = document["versionId"]
     updated = document["updated"]
-    pretty = json.dumps(document, indent=2)
     if not cid:
         cid = derive_version_cid(document).encode()
+    if proof:
+        document["proof"] = proof
     diff = jsonpatch.make_patch(prev_document, document).patch
-
     with open(doc_dir.joinpath(LOG_FILENAME), "a+") as out:
         print(json.dumps([cid, updated, diff]), file=out)
+
+    pretty = json.dumps(document, indent=2)
     with open(doc_dir.joinpath(f"did-v{version}.json"), "w") as out:
         print(pretty, file=out)
-    if prev_document:
-        with open(doc_dir.joinpath(f"did.json"), "w") as out:
-            print(pretty, file=out)
+    with open(doc_dir.joinpath(f"did.json"), "w") as out:
+        print(pretty, file=out)
     print(f"Wrote document v{version} to {doc_dir}")
 
 
 def load_log(
     path: Union[str, Path], verify_hash: bool, verify_signature: bool
-) -> Generator[Tuple[str, list], None, None]:
+) -> Generator[Tuple[int, str, list], None, None]:
     """This currently loads every document version into memory."""
-    index = 0
+    index = 1
     doc = None
     prev_cid = None
-    prev_controllers = None
-    prev_auth_keys = None
-    genesis_doc_id = None
+    prev_controllers = []
+    prev_auth_keys = {}
     doc_id = None
 
     for line in open(path):
@@ -139,23 +135,13 @@ def load_log(
         check_id = doc.get("id")
         if not isinstance(check_id, str):
             raise RuntimeError("Invalid log: invalid document ID")
-        if index == 0:
-            if not check_id.endswith(":" + PLACEHOLDER):
-                raise RuntimeError("Invalid log: invalid placeholder document ID")
-            genesis_doc_id = check_id
-            doc_id = genesis_doc_id
-        elif index == 1:
-            if not check_id.startswith("did:"):
-                raise RuntimeError("Invalid log: invalid document ID")
-            pfx_id, doc_scid = check_id.rsplit(":", 1)
-            scid_ver = int(doc_scid[:1])
-            check_scid = derive_scid(prev_cid, scid_ver=scid_ver)
-            if genesis_doc_id != pfx_id + ":" + PLACEHOLDER or doc_scid != check_scid:
+        if index == 1:
+            derive_id, _ = update_scid(doc)
+            if check_id != derive_id:
                 raise RuntimeError("Invalid log: invalid SCID derivation")
             doc_id = check_id
-        else:
-            if check_id != doc_id:
-                raise RuntimeError("Invalid log: document ID has changed")
+        elif check_id != doc_id:
+            raise RuntimeError("Invalid log: document ID has changed")
 
         controllers = doc.get("controller")
         if controllers is None:
@@ -192,45 +178,34 @@ def load_log(
                     auth = parse_verification_method(auth, doc_id, vm_dict)
                 auth_keys[auth] = vm_dict[auth]
 
-            if index > 0:
-                proofs = doc.get("proof", [])
-                if isinstance(proofs, dict):
-                    proofs = [proofs]
-                if not isinstance(proofs, list):
-                    raise RuntimeError("Invalid log: invalid or missing proof")
-                for proof in proofs:
-                    if not isinstance(proof, dict):
-                        raise RuntimeError("Invalid log: invalid proof")
-                    method_id = proof.get("verificationMethod")
-                    if not isinstance(method_id, str):
-                        raise RuntimeError(
-                            "Invalid log: invalid proof verification method"
-                        )
-                    if method_id.startswith("#"):
-                        method_id = doc_id + method_id
-                    if method_id not in auth_keys:
-                        raise RuntimeError(
-                            "Invalid log: cannot resolve verification method"
-                        )
-                    vmethod = auth_keys[method_id]
-                    if index == 1:
-                        # translate to match version 0 key with placeholder
-                        method_id = method_id.replace(doc_id, genesis_doc_id)
-                        cmp_vmethod = json.loads(
-                            json.dumps(vmethod).replace(doc_id, genesis_doc_id)
-                        )
-                    else:
-                        cmp_vmethod = vmethod
-                    if (
-                        not prev_auth_keys
-                        or prev_auth_keys.get(method_id) != cmp_vmethod
-                    ):
-                        raise RuntimeError(
-                            "Invalid log: proof verification method not found in previous version"
-                        )
-                    verify_proof(doc, proof, vmethod)
+            if index == 1:
+                prev_controllers = controllers
+                prev_auth_keys = auth_keys
 
-        yield (cid, doc.copy())
+            if doc_id not in prev_controllers:
+                print(doc_id, prev_controllers)
+                raise RuntimeError("Invalid log: DID missing from controllers")
+            proofs = doc.get("proof", [])
+            if isinstance(proofs, dict):
+                proofs = [proofs]
+            if not isinstance(proofs, list):
+                raise RuntimeError("Invalid log: invalid or missing proof")
+            for proof in proofs:
+                if not isinstance(proof, dict):
+                    raise RuntimeError("Invalid log: invalid proof")
+                method_id = proof.get("verificationMethod")
+                if not isinstance(method_id, str):
+                    raise RuntimeError("Invalid log: invalid proof verification method")
+                if method_id.startswith("#"):
+                    method_id = doc_id + method_id
+                if method_id not in prev_auth_keys:
+                    raise RuntimeError(
+                        "Invalid log: cannot resolve verification method"
+                    )
+                vmethod = prev_auth_keys[method_id]
+                verify_proof(doc, proof, vmethod)
+
+        yield (index, cid, doc.copy())
         prev_cid = cid
         prev_controllers = controllers
         prev_auth_keys = auth_keys
@@ -277,7 +252,7 @@ def verify_proof(document: dict, proof: dict, method: dict):
         raise RuntimeError("Invalid proof signature")
 
 
-async def update_document(dir_path: str, pass_key: str):
+async def update_document(dir_path: str, pass_key: str) -> dict:
     doc_dir = Path(dir_path)
     if not doc_dir.is_dir():
         raise RuntimeError(f"Missing document directory: {dir_path}")
@@ -289,22 +264,25 @@ async def update_document(dir_path: str, pass_key: str):
     if not log_path.is_file():
         raise RuntimeError(f"Missing log file: {log_path}")
     # FIXME in future only verifier needs to check signatures?
-    *_, (latest_hash, latest_doc) = load_log(
+    *_, (latest_ver, latest_hash, latest_doc) = load_log(
         log_path, verify_hash=True, verify_signature=True
     )
 
     with open(doc_path) as infile:
         document = json.load(infile)
+    if not isinstance(document, dict):
+        raise RuntimeError("Invalid document format")
     doc_id = document.get("id")
     ver = document.get("versionId")
+    next_ver = latest_ver + 1
     if not isinstance(ver, int):
-        raise RuntimeError("Invalid document version")
-    if ver == latest_doc["versionId"]:
+        raise RuntimeError(f"Invalid document version: {ver}")
+    if ver == latest_ver:
         # update version
-        document["versionId"] += 1
-    elif ver != latest_doc["versionId"] + 1:
+        document["versionId"] = next_ver
+    elif ver != next_ver:
         # accept updated version
-        raise RuntimeError("Invalid document version")
+        raise RuntimeError(f"Invalid document version: {ver}")
     document["previousHash"] = latest_hash
     # FIXME accept an updated date?
     document["updated"] = format_datetime(datetime.now(timezone.utc))
@@ -331,12 +309,45 @@ async def update_document(dir_path: str, pass_key: str):
         sk = VerificationMethod.from_key(key_entry.key, kid=kid)
     await store.close()
 
-    document["proof"] = eddsa_sign(document, sk)
-
-    write_document(document, latest_doc, doc_dir)
+    proof = eddsa_sign(document, sk)
+    write_document(document, latest_doc, doc_dir, proof=proof)
+    return document
 
 
 def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
+    """
+    Generate a standard genesis document from a set of verification keys.
+
+    The exact format of this document may change over time.
+    """
+    now = format_datetime(datetime.now(timezone.utc))
+    doc = {
+        "@context": [DID_CONTEXT, DI_CONTEXT, MKEY_CONTEXT],
+        "id": f"did:webnext:{domain}:{PLACEHOLDER}",
+        "created": now,
+        "updated": now,
+        "authentication": [],
+        "verificationMethod": [],
+        "versionId": 1,
+    }
+    for vm in keys:
+        kid = doc["id"] + "#" + vm.kid
+        mkey = multibase.encode(
+            multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
+        )
+        doc["authentication"].append(kid)
+        doc["verificationMethod"].append(
+            {
+                "id": kid,
+                "type": "Multikey",
+                "controller": doc["id"],
+                "publicKeyMultibase": mkey,
+            }
+        )
+    return json.dumps(doc, indent=2)
+
+
+def generate_scid(domain: str, keys: list[VerificationMethod]) -> str:
     """
     Generate a standard genesis document from a set of verification keys.
 
@@ -374,39 +385,49 @@ def derive_version_cid(document: Union[dict, str]) -> CID:
         document = json.loads(document)
     else:
         document = document.copy()
+    if "proof" in document:
+        del document["proof"]
     norm = jsoncanon.canonicalize(document)
     hash = sha256(norm).digest()
     return CID(base="base32", version=1, codec="json-jcs", digest=("sha2-256", hash))
 
 
-def derive_scid(cid: Union[str, CID], scid_ver=1) -> str:
-    if isinstance(cid, str):
-        cid = CID.decode(cid)
-    if scid_ver != 1:
-        raise RuntimeError("Only SCID version 1 is supported")
-    return "1" + base64.b32encode(bytes(cid.raw_digest))[:24].decode("ascii").lower()
-
-
-def verify_scid(document: Union[dict, str]):
-    # FIXME can likely remove this method, this is checked in log verification
+def update_scid(document: Union[dict, str], scid_ver=None) -> Tuple[str, dict]:
     if isinstance(document, str):
-        doc_json = document
         document = json.loads(document)
     else:
-        doc_json = json.dumps(document)
+        document = document.copy()
+    if "proof" in document:
+        del document["proof"]
     doc_id = document.get("id")
-    if not doc_id or not isinstance(doc_id, str) or not doc_id.startswith("did:"):
-        raise RuntimeError("Missing or invalid document id")
-    pfx_id, doc_scid = doc_id.rsplit(":", 1)
-    scid_ver = int(doc_scid[:1])
-    plc_id = f"{pfx_id}:{PLACEHOLDER}"
-    doc_v0 = json.loads(doc_json.replace(doc_id, plc_id))
-    del doc_v0["previousHash"]
-    doc_v0["versionId"] = 0
-    cid = derive_version_cid(doc_v0)
-    scid = derive_scid(cid, scid_ver=scid_ver)
-    if doc_scid != scid:
-        raise RuntimeError("SCID mismatch")
+    if not isinstance(doc_id, str):
+        raise RuntimeError("Missing document ID")
+    id_parts = doc_id.split(":")
+    if id_parts[0] != "did" or len(id_parts) < 4:
+        # FIXME check method identifier
+        raise RuntimeError("Invalid document ID")
+    old_scid: str = id_parts.pop()
+    if scid_ver is None:
+        pfx = old_scid[:1]
+        if pfx.isdigit():
+            scid_ver = int(pfx)
+        else:
+            scid_ver = 1  # use latest version
+    if scid_ver != 1:
+        raise RuntimeError("Only SCID version 1 is supported")
+    id_parts.append(PLACEHOLDER)
+    plc_id = ":".join(id_parts)
+    norm = (
+        jsoncanon.canonicalize(document)
+        .decode("ascii")
+        .replace(doc_id, plc_id)
+        .encode("ascii")
+    )
+    scid = "1" + base64.b32encode(sha256(norm).digest()).decode("ascii").lower()[:24]
+    id_parts.pop()
+    id_parts.append(scid)
+    upd_id = ":".join(id_parts)
+    return upd_id, json.loads(json.dumps(document).replace(doc_id, upd_id))
 
 
 def eddsa_sign(document: dict, sk: VerificationMethod) -> dict:
@@ -432,12 +453,18 @@ async def demo():
     doc_dir = await auto_generate_did(
         "example.com", KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1
     )
+    # gen v2
     with open(doc_dir.joinpath("did.json")) as infile:
         doc = json.load(infile)
     doc["alsoKnownAs"] = ["did:web:example.com"]
     with open(doc_dir.joinpath("did.json"), "w") as outfile:
         json.dump(doc, outfile)
-    await update_document(doc_dir, pass_key="password")
+    doc = await update_document(doc_dir, pass_key="password")
+    # gen v3
+    doc["alsoKnownAs"] = ["did:web:sub.example.com"]
+    with open(doc_dir.joinpath("did.json"), "w") as outfile:
+        json.dump(doc, outfile)
+    doc = await update_document(doc_dir, pass_key="password")
 
 
 asyncio.run(demo())

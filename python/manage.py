@@ -52,7 +52,6 @@ async def auto_generate_did(
     genesis = genesis_document(domain, [sk])
     doc_id, doc_v1 = update_scid(genesis, scid_ver=scid_ver)
     print(f"Generated document: {doc_id}")
-    assert doc_v1.get("versionId") == 1
     assert doc_v1.get("previousHash") is None
 
     # debug: checking the SCID derivation
@@ -70,7 +69,7 @@ async def auto_generate_did(
     await store.close()
 
     proof = eddsa_sign(doc_v1, sk)
-    write_document(doc_v1, None, doc_dir, proof=proof)
+    write_document(doc_v1, None, doc_dir, 1, proof=proof)
 
     return doc_dir
 
@@ -79,10 +78,10 @@ def write_document(
     document: dict,
     prev_document: Optional[dict],
     doc_dir: Path,
+    version_id: int,
     cid: str = None,
     proof: Optional[dict] = None,
 ):
-    version = document["versionId"]
     updated = document["updated"]
     if not cid:
         cid = derive_version_cid(document).encode()
@@ -93,11 +92,11 @@ def write_document(
         print(json.dumps([cid, updated, diff]), file=out)
 
     pretty = json.dumps(document, indent=2)
-    with open(doc_dir.joinpath(f"did-v{version}.json"), "w") as out:
+    with open(doc_dir.joinpath(f"did-v{version_id}.json"), "w") as out:
         print(pretty, file=out)
     with open(doc_dir.joinpath(f"did.json"), "w") as out:
         print(pretty, file=out)
-    print(f"Wrote document v{version} to {doc_dir}")
+    print(f"Wrote document v{version_id} to {doc_dir}")
 
 
 def load_log(
@@ -127,8 +126,6 @@ def load_log(
                 raise RuntimeError("Invalid log: hash mismatch")
         if doc.get("previousHash") != prev_cid:
             raise RuntimeError("Invalid log: invalid previous hash")
-        if doc.get("versionId") != index:
-            raise RuntimeError("Invalid log: inconsistent version")
         if doc.get("updated") != updated:
             raise RuntimeError("Invalid log: update time mismatch")
 
@@ -273,16 +270,7 @@ async def update_document(dir_path: str, pass_key: str) -> dict:
     if not isinstance(document, dict):
         raise RuntimeError("Invalid document format")
     doc_id = document.get("id")
-    ver = document.get("versionId")
-    next_ver = latest_ver + 1
-    if not isinstance(ver, int):
-        raise RuntimeError(f"Invalid document version: {ver}")
-    if ver == latest_ver:
-        # update version
-        document["versionId"] = next_ver
-    elif ver != next_ver:
-        # accept updated version
-        raise RuntimeError(f"Invalid document version: {ver}")
+    version_id = latest_ver + 1
     document["previousHash"] = latest_hash
     # FIXME accept an updated date?
     document["updated"] = format_datetime(datetime.now(timezone.utc))
@@ -310,7 +298,7 @@ async def update_document(dir_path: str, pass_key: str) -> dict:
     await store.close()
 
     proof = eddsa_sign(document, sk)
-    write_document(document, latest_doc, doc_dir, proof=proof)
+    write_document(document, latest_doc, doc_dir, version_id, proof=proof)
     return document
 
 
@@ -328,40 +316,6 @@ def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
         "updated": now,
         "authentication": [],
         "verificationMethod": [],
-        "versionId": 1,
-    }
-    for vm in keys:
-        kid = doc["id"] + "#" + vm.kid
-        mkey = multibase.encode(
-            multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
-        )
-        doc["authentication"].append(kid)
-        doc["verificationMethod"].append(
-            {
-                "id": kid,
-                "type": "Multikey",
-                "controller": doc["id"],
-                "publicKeyMultibase": mkey,
-            }
-        )
-    return json.dumps(doc, indent=2)
-
-
-def generate_scid(domain: str, keys: list[VerificationMethod]) -> str:
-    """
-    Generate a standard genesis document from a set of verification keys.
-
-    The exact format of this document may change over time.
-    """
-    now = format_datetime(datetime.now(timezone.utc))
-    doc = {
-        "@context": [DID_CONTEXT, DI_CONTEXT, MKEY_CONTEXT],
-        "id": f"did:webnext:{domain}:{PLACEHOLDER}",
-        "created": now,
-        "updated": now,
-        "authentication": [],
-        "verificationMethod": [],
-        "versionId": 0,
     }
     for vm in keys:
         kid = doc["id"] + "#" + vm.kid

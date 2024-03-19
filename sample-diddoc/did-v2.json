@@ -4,31 +4,30 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv",
-  "created": "2024-03-19T22:46:39Z",
-  "updated": "2024-03-19T22:46:39Z",
+  "id": "did:webnext:example.com:1ky2xn4ilrvcpafpbulqe5ynf",
+  "created": "2024-03-19T23:39:37Z",
+  "updated": "2024-03-19T23:39:37Z",
   "authentication": [
-    "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q"
+    "did:webnext:example.com:1ky2xn4ilrvcpafpbulqe5ynf#9UmWzupIIXVoOgRNVeRxBKh-CRzy6RgQZh8ZcIQGBNg"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q",
+      "id": "did:webnext:example.com:1ky2xn4ilrvcpafpbulqe5ynf#9UmWzupIIXVoOgRNVeRxBKh-CRzy6RgQZh8ZcIQGBNg",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv",
-      "publicKeyMultibase": "z6MkhRF7KC1YarUuJLzKXs19tDD2MiS3YZH7K2gcGTKTJQQQ"
+      "controller": "did:webnext:example.com:1ky2xn4ilrvcpafpbulqe5ynf",
+      "publicKeyMultibase": "z6MkizAKt7McAJufaiyBSLY843TwwaBepBJMzcKMdLB8Txo3"
     }
   ],
-  "versionId": 2,
   "alsoKnownAs": [
     "did:web:example.com"
   ],
-  "previousHash": "baga6yaqsecqf4ez56zuf746oihu67kbol4ey3o5dqaxzvhsd4jkg7gai6jfri",
+  "previousHash": "baga6yaqseajyq347tezkwfri6arlvsnunmqricxcgogrfpmgyf24gknpov2ey",
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "eddsa-jcs-2022",
-    "verificationMethod": "did:webnext:example.com:1dbggqb4dhg2hhesb7p3ud5dv#kcssbcJ2L8_ENui0oHySTvd8TZc2WzrJeVM3QsuSp4Q",
-    "created": "2024-03-19T22:46:40Z",
+    "verificationMethod": "did:webnext:example.com:1ky2xn4ilrvcpafpbulqe5ynf#9UmWzupIIXVoOgRNVeRxBKh-CRzy6RgQZh8ZcIQGBNg",
+    "created": "2024-03-19T23:39:38Z",
     "proofPurpose": "authentication",
-    "proofValue": "z48JfGqB7BRzYq5civdTXDTWEQVfK5LeasU5TrguCqCecar9LocRQFKW68MncPJzLtQiTwbQMKA8gnKD8dSq5eeVt"
+    "proofValue": "z4m6M3KPq1CBrwxqE4wbSwCgRokDkRWHhLHdXwExbdHj6wy1DtiXSuvbgahxPF5YRmyaLLyVBKsajm6LaX1hbcsVM"
   }
 }

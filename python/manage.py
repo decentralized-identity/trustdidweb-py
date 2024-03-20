@@ -52,8 +52,14 @@ async def auto_generate_did(
     sk = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
     print(f"Generated inception key ({key_alg.name}): {sk.kid}")
     genesis = genesis_document(domain, [sk])
-    doc_id, doc_v1 = update_scid(genesis, scid_ver=scid_ver)
-    print(f"Generated document: {doc_id}")
+    return await manual_generate_did(genesis, sk, pass_key, scid_ver=scid_ver)
+
+
+async def manual_generate_did(
+    document: Union[str, dict], sk: VerificationMethod, pass_key: str, scid_ver=1
+) -> Path:
+    doc_id, doc_v1 = update_scid(document, scid_ver=scid_ver)
+    print(f"Initialized document: {doc_id}")
 
     # debug: checking the SCID derivation
     check_id, _ = update_scid(doc_v1)
@@ -360,25 +366,11 @@ def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
     return json.dumps(doc, indent=2)
 
 
-def derive_version_cid(document: Union[dict, str]) -> CID:
-    if isinstance(document, str):
-        document = json.loads(document)
-    else:
-        document = document.copy()
-    if "proof" in document:
-        del document["proof"]
-    norm = jsoncanon.canonicalize(document)
-    hash = sha256(norm).digest()
-    return CID(base="base32", version=1, codec="json-jcs", digest=("sha2-256", hash))
-
-
 def update_scid(document: Union[dict, str], scid_ver=None) -> Tuple[str, dict]:
     if isinstance(document, str):
         document = json.loads(document)
     else:
         document = document.copy()
-    if "proof" in document:
-        del document["proof"]
     doc_id = document.get("id")
     if not isinstance(doc_id, str):
         raise RuntimeError("Missing document ID")

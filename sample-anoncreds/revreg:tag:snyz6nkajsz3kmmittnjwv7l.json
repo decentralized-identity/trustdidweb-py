@@ -1,0 +1,44 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://anoncreds.example/context/v1"
+  ],
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revreg:tag:snyz6nkajsz3kmmittnjwv7l",
+  "type": ["VerifiableCredential", "AnoncredsMetadata"],
+  "issuer": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+  "validFrom": "2024-03-10T04:24:12Z",
+  "credentialSubject": {
+    "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revreg:tag:snyz6nkajsz3kmmittnjwv7l#definition",
+    "type": "AnoncredsRevocationRegistry",
+    "credDefId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrgc5duojhgc3lfomrduwzc",
+    "revDefType": "CL_ACCUM",
+    "tag": "tag",
+    "maxCredNum": 10,
+    "publicKeys": {
+      "accumKey": {
+        "z": "1 0BAE48198D45479A975228AA126D7A07BE11E42F469DBB9BC694BF29B2D26303 1 0F274DC42EFDAD845E09D06ACF36EBBF4B6CAAE7283F721AFF6464D5A1693CD2 1 0C0AB3E27810067A0C4BFB9222A25DEB74594A5FD7150B149576A0CD35E0A6D1 1 0BA992AF07B1D4372AC00139AF68C180B0AC2C608EC9C4EFA4358780DFCF3172 1 09FEC32E6D83FB42E05A5566543166B3F51F6EC9FC8A8DE8D937B570EF68AB05 1 09A8F2020DF700194B965A6953B2728F7DA4F4DEAD674CB39BA620D0EEF090E9 1 05E7EE4E9F8DB44A9FC4CE95DF9CF6CB65C537DC675248273C2DA06805071CF4 1 17FEBD910290CBE10048E4E0066BA47B8180D099DD2E005D288DA9630DD063D7 1 15E48C4D3B135CD004CE5F200D2F544FA2064D3FA9CFC058060AAEBB584AA25A 1 0FB9C75AC59869166F3C0FAB90E40F34C6691FAE1E40E3F9E64ACBC8C7F227C5 1 0CB4304B50CE18244E10C3D6D80079B16CFADDB9957FB0C96D1E1335D9BA101B 1 158D881CFD0EAA67FDFB486FD7AAE97D37097FB383DA2867388F9D568A046504"
+      }
+    },
+    "tailsLocation": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revtails:6JV83yXWKR8Fu9VTcUnxXUYDgNj6eRRES595uPzMq1f6",
+    "statusLists": [
+      {
+        "entries": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "accumulator": "09083BDD8277D425DC18DBB11849910E41EA6597FBDDA7C133E57639D5F9BE3F",
+        "timestamp": "2024-03-10T04:24:12Z"
+      },
+      {
+        "entries": [1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        "accumulator": "15DB931307B3D3B15BC8FFC78E37364D2F73A2DCF9CF819F5972B488338AE779",
+        "timestamp": "2024-03-10T04:26:12Z"
+      }
+    ]
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
+    "created": "2024-03-10T18:29:08Z",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z38ereR1yomGS7S1sSvw3C5nWtn4MmmENM4jzsvbugcE3etSscreEg96HTq4C9CzRJ6BvrscUAeQsRsBKVUfDmJGY"
+  }
+}

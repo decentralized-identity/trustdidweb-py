@@ -62,12 +62,12 @@ async def manual_generate_did(
     print(f"Initialized document: {doc_id}")
 
     # debug: checking the SCID derivation
-    check_id, _ = update_scid(doc_v1)
+    check_id, _ = update_scid(doc_v1, scid_ver=scid_ver)
     assert check_id == doc_id
 
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
-    init_hash = init_log(doc_dir)
+    init_hash = init_log(doc_dir, doc_id)
 
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
@@ -101,6 +101,7 @@ def write_document(
         print(pretty, file=out)
     with open(doc_dir.joinpath(f"did.json"), "w") as out:
         print(pretty, file=out)
+
     print(f"Wrote document v{version_id} to {doc_dir}")
 
 
@@ -118,14 +119,16 @@ def load_log(
     with open(path) as history:
         lines = iter(history)
         header = json.loads(next(lines))
-        if not isinstance(header, list) or len(header) != 3:
+        if not isinstance(header, list) or len(header) != 5:
             raise RuntimeError("Invalid log: header not parsable")
-        if header[0] != HISTORY_PROTO:
+        if header[1] != HISTORY_PROTO:
             raise RuntimeError("Invalid log: unsupported version")
-        base_proto = header[1]
+        base_proto, doc_id = header[2:4]
         if base_proto != BASE_PROTO:
             raise RuntimeError("Invalid log: unsupported protocol")
-        prev_hash = format_hash(sha256(base_proto.encode("ascii")).digest())
+        prev_hash = log_header_hash(base_proto, doc_id)
+        if prev_hash != header[0]:
+            raise RuntimeError("Invalid log: incorrect header hash")
 
         for line in lines:
             if not line:
@@ -140,18 +143,15 @@ def load_log(
             if verify_hash:
                 check_hash = log_line_hash(prev_hash, version_id, timestamp, patch)
                 if check_hash != log_hash:
-                    raise RuntimeError("Invalid log: hash mismatch")
+                    raise RuntimeError("Invalid log: incorrect data hash")
 
             check_id = doc.get("id")
-            if not isinstance(check_id, str):
-                raise RuntimeError("Invalid log: invalid document ID")
-            if index == 1:
-                derive_id, _ = update_scid(doc)
-                if check_id != derive_id:
-                    raise RuntimeError("Invalid log: invalid SCID derivation")
-                doc_id = check_id
-            elif check_id != doc_id:
+            if check_id != doc_id:
                 raise RuntimeError("Invalid log: document ID has changed")
+            if index == 1:
+                check_id, _ = update_scid(doc, scid_ver=1)
+                if check_id != doc_id:
+                    raise RuntimeError("Invalid log: invalid SCID derivation")
 
             controllers = doc.get("controller")
             if controllers is None:
@@ -193,7 +193,6 @@ def load_log(
                     prev_auth_keys = auth_keys
 
                 if doc_id not in prev_controllers:
-                    print(doc_id, prev_controllers)
                     raise RuntimeError("Invalid log: DID missing from controllers")
                 proofs = doc.get("proof", [])
                 if isinstance(proofs, dict):
@@ -236,11 +235,16 @@ def format_hash(digest: bytes) -> str:
     return multibase.encode(multihash.wrap(digest, "sha2-256"), "base58btc")
 
 
-def init_log(doc_dir: Path) -> str:
-    header = [HISTORY_PROTO, BASE_PROTO, {}]
+def init_log(doc_dir: Path, doc_id: str) -> str:
+    header_hash = log_header_hash(BASE_PROTO, doc_id)
+    header = [header_hash, HISTORY_PROTO, BASE_PROTO, doc_id, {}]
     with open(doc_dir.joinpath(LOG_FILENAME), "w") as log:
         print(json.dumps(header), file=log)
-    digest = sha256(BASE_PROTO.encode("ascii")).digest()
+    return header[0]
+
+
+def log_header_hash(base_proto: str, doc_id: str):
+    digest = sha256(jsoncanon.canonicalize([base_proto, doc_id])).digest()
     return format_hash(digest)
 
 
@@ -366,7 +370,7 @@ def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
     return json.dumps(doc, indent=2)
 
 
-def update_scid(document: Union[dict, str], scid_ver=None) -> Tuple[str, dict]:
+def update_scid(document: Union[dict, str], scid_ver) -> Tuple[str, dict]:
     if isinstance(document, str):
         document = json.loads(document)
     else:
@@ -375,16 +379,14 @@ def update_scid(document: Union[dict, str], scid_ver=None) -> Tuple[str, dict]:
     if not isinstance(doc_id, str):
         raise RuntimeError("Missing document ID")
     id_parts = doc_id.split(":")
-    if id_parts[0] != "did" or len(id_parts) < 4:
-        # FIXME check method identifier
+    if (
+        len(id_parts) < 4
+        or id_parts[0] != "did"
+        or id_parts[1] != METHOD
+        or "" in id_parts
+    ):
         raise RuntimeError("Invalid document ID")
-    old_scid: str = id_parts.pop()
-    if scid_ver is None:
-        pfx = old_scid[:1]
-        if pfx.isdigit():
-            scid_ver = int(pfx)
-        else:
-            scid_ver = 1  # use latest version
+    id_parts.pop()
     if scid_ver != 1:
         raise RuntimeError("Only SCID version 1 is supported")
     id_parts.append(PLACEHOLDER)

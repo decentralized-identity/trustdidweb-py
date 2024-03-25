@@ -38,7 +38,7 @@ class VerificationMethod:
 
     def from_key(key: aries_askar.Key, kid: str = None) -> "VerificationMethod":
         if not kid:
-            kid = key.get_jwk_thumbprint()
+            kid = "#" + key.get_jwk_thumbprint()
         if key.algorithm == aries_askar.KeyAlg.ED25519:
             pk_codec = "ed25519-pub"
         else:
@@ -48,15 +48,16 @@ class VerificationMethod:
 
 async def auto_generate_did(
     domain: str, key_alg: KeyAlgorithm, pass_key: str, scid_ver=1
-) -> Path:
-    sk = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
-    print(f"Generated inception key ({key_alg.name}): {sk.kid}")
-    genesis = genesis_document(domain, [sk])
-    return await provision_did(genesis, sk, pass_key, scid_ver=scid_ver)
+) -> Tuple[Path, VerificationMethod]:
+    vm = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
+    print(f"Generated inception key ({key_alg.name}): {vm.kid}")
+    genesis = genesis_document(domain, [vm])
+    doc_path = await provision_did(genesis, vm, pass_key, scid_ver=scid_ver)
+    return (doc_path, vm)
 
 
 async def provision_did(
-    document: Union[str, dict], sk: VerificationMethod, pass_key: str, scid_ver=1
+    document: Union[str, dict], vm: VerificationMethod, pass_key: str, scid_ver=1
 ) -> Path:
     doc_id, doc_v1 = update_scid(document, scid_ver=scid_ver)
     print(f"Initialized document: {doc_id}")
@@ -69,14 +70,15 @@ async def provision_did(
     doc_dir.mkdir(exist_ok=False)
     init_hash = init_log(doc_dir, doc_id)
 
+    vm.kid = doc_id + vm.kid
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir.name}/{STORE_FILENAME}", pass_key=pass_key
     )
     async with store.session() as session:
-        await session.insert_key(sk.kid, sk.key)
+        await session.insert_key(vm.kid, vm.key)
     await store.close()
 
-    write_document(doc_dir, doc_v1, None, init_hash, 1, new_timestamp(), sk)
+    write_document(doc_dir, doc_v1, None, init_hash, 1, new_timestamp(), vm)
 
     return doc_dir
 
@@ -88,11 +90,11 @@ def write_document(
     prev_hash: str,
     version_id: int,
     timestamp: str,
-    sk: VerificationMethod,
+    vm: VerificationMethod,
 ):
     patch = jsonpatch.make_patch(prev_document, document).patch
     cur_hash = log_line_hash(prev_hash, version_id, timestamp, patch)
-    proof = eddsa_sign(document, sk, cur_hash)
+    proof = eddsa_sign(document, vm, cur_hash)
     with open(doc_dir.joinpath(LOG_FILENAME), "a+") as out:
         print(json.dumps([cur_hash, version_id, timestamp, patch, [proof]]), file=out)
 
@@ -177,10 +179,6 @@ def load_log(
                     if isinstance(auth, str):
                         if auth.startswith("#"):
                             auth = doc_id + auth
-                        if not auth.startswith(doc_id + "#"):
-                            raise RuntimeError(
-                                "Invalid log: only local authentication keys supported"
-                            )
                         if auth not in vm_dict:
                             raise RuntimeError(
                                 f"Invalid log: invalid authentication key reference ({auth})"
@@ -208,11 +206,23 @@ def load_log(
                         raise RuntimeError(
                             "Invalid log: invalid proof verification method"
                         )
+                    if "#" not in method_id:
+                        raise RuntimeError(
+                            "Invalid log: expected verification method reference with fragment"
+                        )
                     if method_id.startswith("#"):
                         method_id = doc_id + method_id
+                        method_ctl = doc_id
+                    else:
+                        fpos = method_id.find("#")
+                        method_ctl = method_id[:fpos]
                     if method_id not in prev_auth_keys:
                         raise RuntimeError(
                             "Invalid log: cannot resolve verification method"
+                        )
+                    if method_ctl not in prev_controllers:
+                        raise RuntimeError(
+                            f"Invalid log: not a listed controller ({method_ctl})"
                         )
                     vmethod = prev_auth_keys[method_id]
                     verify_proof(doc, proof, vmethod)
@@ -294,13 +304,12 @@ def verify_proof(document: dict, proof: dict, method: dict):
         raise RuntimeError("Invalid proof signature")
 
 
-async def update_document(dir_path: str, pass_key: str) -> dict:
+def update_document(dir_path: str, vm: Optional[VerificationMethod] = None) -> dict:
     doc_dir = Path(dir_path)
     if not doc_dir.is_dir():
         raise RuntimeError(f"Missing document directory: {dir_path}")
     doc_path = doc_dir.joinpath("did.json")
     log_path = doc_dir.joinpath(LOG_FILENAME)
-    store_path = doc_dir.joinpath(STORE_FILENAME)
     if not doc_path.is_file():
         raise RuntimeError(f"Missing document file: {doc_path}")
     if not log_path.is_file():
@@ -314,33 +323,36 @@ async def update_document(dir_path: str, pass_key: str) -> dict:
         document = json.load(infile)
     if not isinstance(document, dict):
         raise RuntimeError("Invalid document format")
-    doc_id = document.get("id")
     version_id = prev_ver + 1
 
-    # look up the signing key
+    write_document(
+        doc_dir, document, prev_doc, prev_hash, version_id, new_timestamp(), vm
+    )
+    return document
+
+
+def find_signing_key(document: dict) -> str:
     # FIXME: check authentication block and resolve references
-    kid = None
     for ver_method in document["verificationMethod"]:
         kid = ver_method.get("id")
         if not isinstance(kid, str):
             raise RuntimeError("Invalid verification method")
-        kid = kid.removeprefix(doc_id).lstrip("#")
-        break
-    if not kid:
-        raise RuntimeError("Error determining signing key")
+        if kid.startswith("#"):
+            kid = f"{document['id']}{kid}"
+        return kid
+    raise RuntimeError("Error determining signing key")
 
+
+async def load_key(store_path: Path, pass_key: str, kid: str) -> VerificationMethod:
     store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
-    async with store.session() as session:
-        key_entry = await session.fetch_key(kid)
-        if not key_entry:
-            raise RuntimeError(f"Key not found: {kid}")
-        sk = VerificationMethod.from_key(key_entry.key, kid=kid)
-    await store.close()
-
-    write_document(
-        doc_dir, document, prev_doc, prev_hash, version_id, new_timestamp(), sk
-    )
-    return document
+    try:
+        async with store.session() as session:
+            key_entry = await session.fetch_key(kid)
+            if not key_entry:
+                raise RuntimeError(f"Key not found: {kid}")
+            return VerificationMethod.from_key(key_entry.key, kid=kid)
+    finally:
+        await store.close()
 
 
 def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
@@ -356,20 +368,31 @@ def genesis_document(domain: str, keys: list[VerificationMethod]) -> str:
         "verificationMethod": [],
     }
     for vm in keys:
-        kid = doc["id"] + "#" + vm.kid
-        mkey = multibase.encode(
-            multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
-        )
-        doc["authentication"].append(kid)
-        doc["verificationMethod"].append(
-            {
-                "id": kid,
-                "type": "Multikey",
-                "controller": doc["id"],
-                "publicKeyMultibase": mkey,
-            }
-        )
+        add_auth_key(doc, vm)
     return json.dumps(doc, indent=2)
+
+
+def add_auth_key(document: dict, vm: VerificationMethod):
+    mkey = multibase.encode(
+        multicodec.wrap(vm.pk_codec, vm.key.get_public_bytes()), "base58btc"
+    )
+    fpos = vm.kid.find("#")
+    if fpos > 0:
+        controller = vm.kid[:fpos]
+    else:
+        controller = document["id"]
+    kid = vm.kid
+    if kid.startswith("#"):
+        kid = document["id"] + kid
+    document["authentication"].append(kid)
+    document["verificationMethod"].append(
+        {
+            "id": kid,
+            "type": "Multikey",
+            "controller": controller,
+            "publicKeyMultibase": mkey,
+        }
+    )
 
 
 def update_scid(document: Union[dict, str], scid_ver) -> Tuple[str, dict]:
@@ -427,21 +450,37 @@ def format_datetime(dt: datetime) -> str:
 
 
 async def demo():
-    doc_dir = await auto_generate_did(
-        "example.com", KeyAlgorithm(name="ed25519"), pass_key="password", scid_ver=1
+    pass_key = "password"
+    (doc_dir, vm) = await auto_generate_did(
+        "example.com", KeyAlgorithm(name="ed25519"), pass_key=pass_key, scid_ver=1
     )
-    # gen v2
+
+    # gen v2 - add external controller
+    with open(doc_dir.joinpath("did.json")) as infile:
+        doc = json.load(infile)
+    ctl_id = "did:example:controller"
+    doc["controller"] = [doc["id"], ctl_id]
+    store_path = doc_dir.joinpath(STORE_FILENAME)
+    ctl_sk = aries_askar.Key.generate("ed25519")
+    ctl_vm = VerificationMethod.from_key(
+        ctl_sk, ctl_id + "#" + ctl_sk.get_jwk_thumbprint()
+    )
+    store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
+    async with store.session() as session:
+        await session.insert_key(ctl_vm.kid, ctl_vm.key)
+    await store.close()
+    add_auth_key(doc, ctl_vm)
+    with open(doc_dir.joinpath("did.json"), "w") as outfile:
+        json.dump(doc, outfile)
+    doc = update_document(doc_dir, ctl_vm)
+
+    # gen v3 - add alsoKnownAs
     with open(doc_dir.joinpath("did.json")) as infile:
         doc = json.load(infile)
     doc["alsoKnownAs"] = ["did:web:example.com"]
     with open(doc_dir.joinpath("did.json"), "w") as outfile:
         json.dump(doc, outfile)
-    doc = await update_document(doc_dir, pass_key="password")
-    # gen v3
-    doc["alsoKnownAs"] = ["did:web:sub.example.com"]
-    with open(doc_dir.joinpath("did.json"), "w") as outfile:
-        json.dump(doc, outfile)
-    doc = await update_document(doc_dir, pass_key="password")
+    doc = update_document(doc_dir, vm)
 
 
 asyncio.run(demo())

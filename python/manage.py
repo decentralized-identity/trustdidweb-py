@@ -12,7 +12,7 @@ import aries_askar
 import jsoncanon
 import jsonpatch
 
-from multiformats import CID, multibase, multicodec, multihash
+from multiformats import multibase, multicodec, multihash
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 DI_CONTEXT = "https://w3id.org/security/data-integrity/v2"
@@ -52,18 +52,18 @@ async def auto_generate_did(
     sk = VerificationMethod.from_key(aries_askar.Key.generate(key_alg.name))
     print(f"Generated inception key ({key_alg.name}): {sk.kid}")
     genesis = genesis_document(domain, [sk])
-    return await manual_generate_did(genesis, sk, pass_key, scid_ver=scid_ver)
+    return await provision_did(genesis, sk, pass_key, scid_ver=scid_ver)
 
 
-async def manual_generate_did(
+async def provision_did(
     document: Union[str, dict], sk: VerificationMethod, pass_key: str, scid_ver=1
 ) -> Path:
     doc_id, doc_v1 = update_scid(document, scid_ver=scid_ver)
     print(f"Initialized document: {doc_id}")
 
     # debug: checking the SCID derivation
-    check_id, _ = update_scid(doc_v1, scid_ver=scid_ver)
-    assert check_id == doc_id
+    check_id, check_doc = update_scid(doc_v1, scid_ver=scid_ver)
+    assert check_id == doc_id and check_doc == doc_v1
 
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
@@ -123,12 +123,13 @@ def load_log(
             raise RuntimeError("Invalid log: header not parsable")
         if header[1] != HISTORY_PROTO:
             raise RuntimeError("Invalid log: unsupported version")
-        base_proto, doc_id = header[2:4]
+        base_proto, log_id = header[2:4]
         if base_proto != BASE_PROTO:
             raise RuntimeError("Invalid log: unsupported protocol")
-        prev_hash = log_header_hash(base_proto, doc_id)
+        prev_hash = log_header_hash(base_proto, log_id)
         if prev_hash != header[0]:
             raise RuntimeError("Invalid log: incorrect header hash")
+        doc_id = f"did:{METHOD}:{log_id}"
 
         for line in lines:
             if not line:
@@ -149,8 +150,8 @@ def load_log(
             if check_id != doc_id:
                 raise RuntimeError("Invalid log: document ID has changed")
             if index == 1:
-                check_id, _ = update_scid(doc, scid_ver=1)
-                if check_id != doc_id:
+                check_scid, _ = update_scid(doc, scid_ver=1)
+                if check_scid != doc_id:
                     raise RuntimeError("Invalid log: invalid SCID derivation")
 
             controllers = doc.get("controller")
@@ -236,8 +237,9 @@ def format_hash(digest: bytes) -> str:
 
 
 def init_log(doc_dir: Path, doc_id: str) -> str:
-    header_hash = log_header_hash(BASE_PROTO, doc_id)
-    header = [header_hash, HISTORY_PROTO, BASE_PROTO, doc_id, {}]
+    ident = doc_id.removeprefix(f"did:{METHOD}:")
+    header_hash = log_header_hash(BASE_PROTO, ident)
+    header = [header_hash, HISTORY_PROTO, BASE_PROTO, ident, {}]
     with open(doc_dir.joinpath(LOG_FILENAME), "w") as log:
         print(json.dumps(header), file=log)
     return header[0]

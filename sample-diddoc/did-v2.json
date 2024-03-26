@@ -4,27 +4,27 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:menetsyqymts6yhpmtfebtym",
+  "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
   "authentication": [
-    "did:webnext:example.com:menetsyqymts6yhpmtfebtym#kbaEzdWJd6UFDcifYo158dh2mXysTB7INj51JcgpCqg",
-    "did:example:controller#tWMK1fLzevQaBJc_bl4vJ6waLI32bQwTIcVv9BXTiGA"
+    "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY",
+    "did:example:controller#4JBRXBMuyFiVpB6NLyduvBXAUBrFaY1wNcwzxMip4nQ"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:menetsyqymts6yhpmtfebtym#kbaEzdWJd6UFDcifYo158dh2mXysTB7INj51JcgpCqg",
+      "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:menetsyqymts6yhpmtfebtym",
-      "publicKeyMultibase": "z6Mkn4z9ze2ESZhWL2HKGdQcGFdT8dH5Ht9zDnBoiPJfANyz"
+      "controller": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
+      "publicKeyMultibase": "z6MkrgZYdAiLuXyYEGB1Lz4jvJ2bqLn1R9Lp41W1wyaMu5XD"
     },
     {
-      "id": "did:example:controller#tWMK1fLzevQaBJc_bl4vJ6waLI32bQwTIcVv9BXTiGA",
+      "id": "did:example:controller#4JBRXBMuyFiVpB6NLyduvBXAUBrFaY1wNcwzxMip4nQ",
       "type": "Multikey",
       "controller": "did:example:controller",
-      "publicKeyMultibase": "z6Mks2wuUH1sgBYUxnd48LV9TxS5fACun4ZdCAGy8ujRLzJx"
+      "publicKeyMultibase": "z6MkrpPADcfJRynzRYCyP7TomBV6RTVKpdJht8H8TzU4bjLr"
     }
   ],
   "controller": [
-    "did:webnext:example.com:menetsyqymts6yhpmtfebtym",
+    "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
     "did:example:controller"
   ]
 }

@@ -4,16 +4,16 @@
     "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
+  "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
   "authentication": [
-    "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY"
+    "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY",
+      "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
-      "publicKeyMultibase": "z6MkrgZYdAiLuXyYEGB1Lz4jvJ2bqLn1R9Lp41W1wyaMu5XD"
+      "controller": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
+      "publicKeyMultibase": "z6Mkn51yJzZ6ciDLrFhSBDeQqWm1HnNZY3aJVTa4sgaqZo7K"
     }
   ]
 }

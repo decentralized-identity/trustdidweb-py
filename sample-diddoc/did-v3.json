@@ -2,32 +2,43 @@
   "@context": [
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/data-integrity/v2",
-    "https://w3id.org/security/multikey/v1"
+    "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/.well-known/did-configuration/v1",
+    "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
+  "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
   "authentication": [
-    "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY",
-    "did:example:controller#4JBRXBMuyFiVpB6NLyduvBXAUBrFaY1wNcwzxMip4nQ"
+    "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA",
+    "did:example:controller#RTmZwHdoNlLLVWyUeEKwxlWuGyqRU2MfOpB19AKQHSU"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6#I1kHfbxPvZLr24PZOcwvAQhCoykO_urM8_49LgetEOY",
+      "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA",
       "type": "Multikey",
-      "controller": "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
-      "publicKeyMultibase": "z6MkrgZYdAiLuXyYEGB1Lz4jvJ2bqLn1R9Lp41W1wyaMu5XD"
+      "controller": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
+      "publicKeyMultibase": "z6Mkn51yJzZ6ciDLrFhSBDeQqWm1HnNZY3aJVTa4sgaqZo7K"
     },
     {
-      "id": "did:example:controller#4JBRXBMuyFiVpB6NLyduvBXAUBrFaY1wNcwzxMip4nQ",
+      "id": "did:example:controller#RTmZwHdoNlLLVWyUeEKwxlWuGyqRU2MfOpB19AKQHSU",
       "type": "Multikey",
       "controller": "did:example:controller",
-      "publicKeyMultibase": "z6MkrpPADcfJRynzRYCyP7TomBV6RTVKpdJht8H8TzU4bjLr"
+      "publicKeyMultibase": "z6MkoSiNPZR3bxBcx7AJPvtRjJow9av2Rf9DRvAnbf9LjQPZ"
     }
   ],
   "controller": [
-    "did:webnext:example.com:jbmg2dhmszn5ferhwjvfecx6",
+    "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
     "did:example:controller"
   ],
-  "alsoKnownAs": [
-    "did:web:example.com"
+  "service": [
+    {
+      "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#domain",
+      "type": "LinkedDomains",
+      "serviceEndpoint": "https://domain.example"
+    },
+    {
+      "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#whois",
+      "type": "LinkedVerifiablePresentation",
+      "serviceEndpoint": "https://domain.example/.well-known/whois.jsonld"
+    }
   ]
 }

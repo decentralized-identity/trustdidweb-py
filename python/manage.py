@@ -231,7 +231,11 @@ class DocumentState:
                     raise ValueError("Unsupported method parameter")
             else:
                 raise ValueError(f"Unsupported history parameter: {param}")
-            params[param] = pvalue
+            if param is None:
+                if param in params:
+                    del params[param]
+            else:
+                params[param] = pvalue
         if "method" not in params:
             raise ValueError("Invalid initial parameters")
 

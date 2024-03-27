@@ -166,15 +166,13 @@ class DocumentState:
 
         params = prev_state.params.copy() if prev_state else {}
         for param, pvalue in params_update.items():
-            if param == "id":
-                pass
-            elif param == "method":
+            if param == "method":
                 if pvalue != BASE_PROTO:
                     raise RuntimeError("unsupported method")
             else:
                 raise RuntimeError(f"unsupported parameter ({param})")
             params[param] = pvalue
-        if "id" not in params or "method" not in params:
+        if "method" not in params:
             raise RuntimeError("invalid initial parameters")
 
         check_ver = prev_state.version_id + 1 if prev_state else 1
@@ -183,20 +181,19 @@ class DocumentState:
 
         if "value" in doc_update:
             document = doc_update["value"]
-            if not isinstance(document, dict):
-                raise RuntimeError("invalid document value")
         else:
             if not prev_state:
                 raise RuntimeError("invalid initial data")
+            # FIXME wrap error
             document = jsonpatch.apply_patch(prev_state.document, doc_update["patch"])
 
-        check_id = f"did:{METHOD}:{params['id']}"
-        if check_id != document.get("id"):
-            raise RuntimeError("document ID mismatch")
+        if not isinstance(document, dict) or "id" not in document:
+            raise RuntimeError("invalid document state")
 
+        # check SCID derivation for first version
         if not prev_state:
             check_scid, _ = update_scid(document, scid_ver=1)
-            if check_scid != check_id:
+            if check_scid != document["id"]:
                 raise RuntimeError("invalid SCID derivation")
 
         timestamp, timestamp_raw = cls.load_timestamp(timestamp_raw)
@@ -304,7 +301,7 @@ async def provision_did(
     await store.close()
 
     state = DocumentState.initial(
-        params={"method": BASE_PROTO, "id": doc_id.removeprefix(f"did:{METHOD}:")},
+        params={"method": BASE_PROTO},
         document=doc_v1,
     )
     state.proofs.append(eddsa_sign(state.document, vm, state.version_hash))

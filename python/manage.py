@@ -555,7 +555,7 @@ def format_datetime(dt: datetime) -> str:
 async def demo():
     pass_key = "password"
     (doc_dir, state, vm) = await auto_generate_did(
-        "example.com", KeyAlgorithm(name="ed25519"), pass_key=pass_key, scid_ver=1
+        "domain.example", KeyAlgorithm(name="ed25519"), pass_key=pass_key, scid_ver=1
     )
 
     # gen v2 - add external controller
@@ -575,9 +575,26 @@ async def demo():
     state = update_document_state(state, doc, vm)  # sign with genesis key
     write_document_state(doc_dir, state)
 
-    # gen v3 - add alsoKnownAs
+    # gen v3 - add services
     doc = state.document_copy()
-    doc["alsoKnownAs"] = ["did:web:example.com"]
+    doc["@context"].extend(
+        [
+            "https://identity.foundation/.well-known/did-configuration/v1",
+            "https://identity.foundation/linked-vp/contexts/v1",
+        ]
+    )
+    doc["service"] = [
+        {
+            "id": doc["id"] + "#domain",
+            "type": "LinkedDomains",
+            "serviceEndpoint": "https://domain.example",
+        },
+        {
+            "id": doc["id"] + "#whois",
+            "type": "LinkedVerifiablePresentation",
+            "serviceEndpoint": "https://domain.example/.well-known/whois.jsonld",
+        },
+    ]
     state = update_document_state(state, doc, ctl_vm)  # sign with controller key
     write_document_state(doc_dir, state)
 

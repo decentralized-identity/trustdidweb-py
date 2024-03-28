@@ -1,19 +1,18 @@
 {
   "@context": [
     "https://www.w3.org/ns/did/v1",
-    "https://w3id.org/security/data-integrity/v2",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
+  "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
   "authentication": [
-    "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA"
+    "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw"
   ],
   "verificationMethod": [
     {
-      "id": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh#95q-ybVqH48Pp83DRrzJhtsvf8NcOFJLfIYc6iUGKwA",
+      "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw",
       "type": "Multikey",
-      "controller": "did:webnext:domain.example:5rsvveashk235ja6eiqevsmh",
-      "publicKeyMultibase": "z6Mkn51yJzZ6ciDLrFhSBDeQqWm1HnNZY3aJVTa4sgaqZo7K"
+      "controller": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
+      "publicKeyMultibase": "z6MkjJAeGtwXXYCJjtyQGt5L8MBhjcQoXCr5iXuyQ1UQ5q2N"
     }
   ]
 }

@@ -1,6 +1,5 @@
+aiofiles~=23.0.0
+aiohttp~=3.7.0
 aries_askar~=0.3.0
-base58~=1.0.0
-dag_json~=0.1.0
 jsoncanon~=0.2.0
 multiformats~=0.3.0
-

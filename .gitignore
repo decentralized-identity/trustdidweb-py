@@ -1,1 +1,3 @@
-python/did:*
+/did:*
+*.pyc
+__pycache__

@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from pathlib import Path
 from typing import Tuple
@@ -17,7 +18,7 @@ from did_tdw import (
     update_document_state,
     write_document_state,
 )
-from did_tdw.proof import AskarSigningKey, SigningKey
+from did_tdw.proof import AskarSigningKey, SigningKey, eddsa_jcs_sign_raw
 
 
 STORE_FILENAME = "keys.sqlite"
@@ -44,9 +45,31 @@ async def auto_generate_did(
     return (doc_path, state, sk)
 
 
+def create_did_configuration(did: str, origin: str, sk: SigningKey) -> dict:
+    vc = {
+        "@context": [
+            "https://www.w3.org/ns/credentials/v2",
+            "https://identity.foundation/.well-known/did-configuration/v1",
+        ],
+        "issuer": did,
+        "validFrom": "2020-12-04T14:08:28-06:00",
+        # "validUntil":
+        "type": ["VerifiableCredential", "DomainLinkageCredential"],
+        "credentialSubject": {
+            "id": did,
+            "origin": origin,
+        },
+    }
+    vc["proof"] = eddsa_jcs_sign_raw(vc, sk, "assertionMethod")
+    return {
+        "@context": "https://identity.foundation/.well-known/did-configuration/v1",
+        "linked_dids": [vc],
+    }
+
+
 async def demo(domain: str):
     pass_key = "password"
-    (doc_dir, state, vm) = await auto_generate_did(domain, "ed25519", pass_key=pass_key)
+    (doc_dir, state, sk) = await auto_generate_did(domain, "ed25519", pass_key=pass_key)
     created = state.timestamp
 
     # gen v2 - add external controller
@@ -54,14 +77,14 @@ async def demo(domain: str):
     doc = state.document_copy()
     doc["controller"] = [doc["id"], ctl_id]
     store_path = doc_dir.joinpath(STORE_FILENAME)
-    ctl_sk = aries_askar.Key.generate("ed25519")
-    ctl_vm = AskarSigningKey(ctl_sk, ctl_id + "#" + ctl_sk.get_jwk_thumbprint())
+    ctl_key = aries_askar.Key.generate("ed25519")
+    ctl_sk = AskarSigningKey(ctl_key, ctl_id + "#" + ctl_key.get_jwk_thumbprint())
     store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
     async with store.session() as session:
-        await session.insert_key(ctl_vm.kid, ctl_vm.key)
+        await session.insert_key(ctl_sk.kid, ctl_sk.key)
     await store.close()
-    add_auth_key(doc, ctl_vm)
-    state = update_document_state(state, doc, vm)  # sign with genesis key
+    add_auth_key(doc, ctl_sk)
+    state = update_document_state(state, doc, sk)  # sign with genesis key
     write_document_state(doc_dir, state)
 
     # gen v3 - add services
@@ -84,7 +107,8 @@ async def demo(domain: str):
             "serviceEndpoint": f"https://{domain}/.well-known/whois.jsonld",
         },
     ]
-    state = update_document_state(state, doc, ctl_vm)  # sign with controller key
+    doc["assertionMethod"] = [doc["authentication"][0]]  # enable VC signing
+    state = update_document_state(state, doc, ctl_sk)  # sign with controller key
     write_document_state(doc_dir, state)
 
     # verify history
@@ -95,6 +119,16 @@ async def demo(domain: str):
     assert meta.updated == state.timestamp
     assert meta.deactivated == False
     assert meta.version_id == 3
+
+    # output did configuration
+    did_conf = create_did_configuration(
+        doc["id"],
+        f"https://{domain}",
+        sk,
+    )
+    with open(doc_dir.joinpath("did-configuration.json"), "w") as outdc:
+        print(json.dumps(did_conf, indent=2), file=outdc)
+    print("Wrote did-configuration.json")
 
 
 #     # test resolver

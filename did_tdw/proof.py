@@ -51,15 +51,32 @@ class AskarSigningKey(SigningKey):
 def eddsa_jcs_sign(
     state: DocumentState, sk: SigningKey, timestamp: datetime = None
 ) -> dict:
+    return eddsa_jcs_sign_raw(
+        state.document,
+        sk,
+        purpose="authentication",
+        challenge=state.version_hash,
+        timestamp=timestamp,
+    )
+
+
+def eddsa_jcs_sign_raw(
+    document: dict,
+    sk: SigningKey,
+    purpose: str,
+    challenge: str = None,
+    timestamp: datetime = None,
+) -> dict:
     proof = {
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": sk.kid,
         "created": make_timestamp(timestamp)[1],
-        "challenge": state.version_hash,
-        "proofPurpose": "authentication",
+        "proofPurpose": purpose,
     }
-    data_hash = sha256(jsoncanon.canonicalize(state.document)).digest()
+    if challenge:
+        proof["challenge"] = challenge
+    data_hash = sha256(jsoncanon.canonicalize(document)).digest()
     options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
     proof["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")

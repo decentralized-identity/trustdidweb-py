@@ -193,6 +193,8 @@ class DocumentState:
             last_version_hash = format_hash(
                 sha256(normalize_genesis(document, check_scid=params["scid"])).digest()
             )
+            if derive_scid(last_version_hash) != params["scid"]:
+                raise ValueError("Invalid SCID derivation")
 
         timestamp, timestamp_raw = make_timestamp(timestamp_raw)
 

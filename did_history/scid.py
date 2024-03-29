@@ -9,7 +9,7 @@ PLACEHOLDER = "{{SCID}}"
 
 
 def derive_scid(digest: str) -> str:
-    return digest[-24:]
+    return digest[:24]
 
 
 def format_hash(digest: bytes) -> str:

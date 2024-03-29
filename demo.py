@@ -1,12 +1,14 @@
 import asyncio
 import json
 
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 from sys import argv
 
 import aries_askar
 
+from did_history.date_utils import make_timestamp
 from did_tdw import (
     DocumentState,
     HISTORY_FILENAME,
@@ -45,14 +47,17 @@ async def auto_generate_did(
     return (doc_path, state, sk)
 
 
-def create_did_configuration(did: str, origin: str, sk: SigningKey) -> dict:
+def create_did_configuration(
+    did: str, origin: str, sk: SigningKey, timestamp: datetime = None
+) -> dict:
+    _, timestamp = make_timestamp(timestamp)
     vc = {
         "@context": [
             "https://www.w3.org/ns/credentials/v2",
             "https://identity.foundation/.well-known/did-configuration/v1",
         ],
         "issuer": did,
-        "validFrom": "2020-12-04T14:08:28-06:00",
+        "validFrom": timestamp,
         # "validUntil":
         "type": ["VerifiableCredential", "DomainLinkageCredential"],
         "credentialSubject": {

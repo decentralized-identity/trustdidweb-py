@@ -9,10 +9,14 @@
   "validFrom": "2024-03-10T04:24:12Z",
   "credentialSubject": {
     "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/schema:verified-person:1.0.0:1pmrgc5duojhgc3lfomrduwzc#definition",
-    "type": "AnoncredsSchema",
-    "schemaName": "verified-person",
-    "version": "1.0.0",
-    "attrNames": ["id", "name"]
+    "type": "AnoncredsDefinition",
+    "contentType": "Schema",
+    "content": {
+      "issuerId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+      "name": "verified-person",
+      "version": "1.0.0",
+      "attrNames": ["id", "name"]
+    }
   },
   "proof": {
     "type": "DataIntegrityProof",

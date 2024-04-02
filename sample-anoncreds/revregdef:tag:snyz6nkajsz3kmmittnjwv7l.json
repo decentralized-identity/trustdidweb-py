@@ -1,0 +1,37 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://anoncreds.example/context/v1"
+  ],
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revregdef:tag:snyz6nkajsz3kmmittnjwv7l",
+  "type": ["VerifiableCredential", "AnoncredsMetadata"],
+  "issuer": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+  "validFrom": "2024-03-10T04:24:12Z",
+  "credentialSubject": {
+    "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revregdef:tag:snyz6nkajsz3kmmittnjwv7l#definition",
+    "type": "AnoncredsDefinition",
+    "contentType": "RevocationRegistryDefinition",
+    "content": {
+      "issuerId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
+      "credDefId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrgc5duojhgc3lfomrduwzc",
+      "revocDefType": "CL_ACCUM",
+      "tag": "tag",
+      "value": {
+        "maxCredNum": 10,
+        "publicKeys": {
+          "accumKey": "0BAE48198D45479A975228AA126D7A07BE11E42F469DBB9BC694BF29B2D26303"
+        },
+        "tailsLocation": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/revtails:6JV83yXWKR8Fu9VTcUnxXUYDgNj6eRRES595uPzMq1f6",
+        "tailsHash": "6JV83yXWKR8Fu9VTcUnxXUYDgNj6eRRES595uPzMq1f6"
+      }
+    }
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr#BPF1rDNTPWlLAK195TU5yGMVao8P202OZPsa2KLJqHA",
+    "created": "2024-03-10T18:29:08Z",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z38ereR1yomGS7S1sSvw3C5nWtn4MmmENM4jzsvbugcE3etSscreEg96HTq4C9CzRJ6BvrscUAeQsRsBKVUfDmJGY"
+  }
+}

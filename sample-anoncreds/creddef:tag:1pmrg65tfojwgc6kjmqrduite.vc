@@ -3,16 +3,19 @@
     "https://www.w3.org/ns/credentials/v2",
     "https://anoncreds.example/context/v1"
   ],
-  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrg65tfojwgc6kjmqrduite",
-  "type": ["VerifiableCredential", "AnoncredsMetadata"],
+  "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrg65tfojwgc6kjmqrduite.vc",
+  "type": [
+    "VerifiableCredential",
+    "AnoncredsMetadata"
+  ],
   "issuer": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
   "validFrom": "2024-03-10T04:24:12Z",
   "credentialSubject": {
-    "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrg65tfojwgc6kjmqrduite#definition",
+    "id": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/creddef:tag:1pmrg65tfojwgc6kjmqrduite.vc#definition",
     "type": "AnoncredsDefinition",
     "contentType": "CredentialDefinition",
     "content": {
-      "schemaId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/schema:verified-person:1.0.0:1pmrgc5duojhgc3lfomrduwzc",
+      "schemaId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr/svc/anoncreds/schema:verified-person:1.0.0:1pmrgc5duojhgc3lfomrduwzc.vc",
       "issuerId": "did:webnext:example.com:1bfeyfxyd79kv6jkup5pygsqr",
       "signatureType": "CL",
       "tag": "tag",

@@ -9,13 +9,14 @@ from typing import Optional, Union
 import jsonpatch
 
 from .date_utils import format_datetime, make_timestamp
-from .scid import (
+from .format import (
     PLACEHOLDER,
-    derive_scid,
     format_hash,
     normalize_genesis,
     normalize_log_line,
 )
+
+MIN_SCID_LENGTH: int = 28
 
 
 @dataclass
@@ -53,12 +54,17 @@ class DocumentState:
         params: dict,
         document: Union[str, dict],
         timestamp: Optional[Union[str, datetime]] = None,
+        scid_length: int = None,
     ):
         if "hash" in params and params["hash"] != "sha2-256":
             raise ValueError(f"Unsupported hash function: {params['hash']}")
         doc_norm = normalize_genesis(document)
         genesis_hash = format_hash(sha256(doc_norm).digest())
-        scid = derive_scid(genesis_hash)
+        if scid_length is None:
+            scid_length = MIN_SCID_LENGTH
+        elif scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
+            raise ValueError(f"Invalid SCID length: {scid_length}")
+        scid = genesis_hash[:scid_length]
         if isinstance(document, dict):
             document = json.dumps(document)
         doc_v1 = json.loads(document.replace(PLACEHOLDER, scid))
@@ -84,7 +90,7 @@ class DocumentState:
             timestamp_raw=timestamp_raw,
             version_id=1,
             version_hash="",
-            last_version_hash=genesis_hash,
+            last_version_hash=scid,
             proofs=[],
         )
         ret.version_hash = ret.calculate_hash()
@@ -173,7 +179,7 @@ class DocumentState:
 
         check_ver = prev_state.version_id + 1 if prev_state else 1
         if check_ver != version_id:
-            raise ValueError("Version ID mismatch")
+            raise ValueError("VersionId mismatch")
 
         if "value" in doc_update:
             document = doc_update["value"]
@@ -190,10 +196,15 @@ class DocumentState:
         if prev_state:
             last_version_hash = prev_state.version_hash
         else:
-            last_version_hash = format_hash(
-                sha256(normalize_genesis(document, check_scid=params["scid"])).digest()
+            last_version_hash = params["scid"]
+            if len(last_version_hash) < MIN_SCID_LENGTH:
+                raise ValueError("Invalid SCID length")
+            genesis_hash = format_hash(
+                sha256(
+                    normalize_genesis(document, check_scid=last_version_hash)
+                ).digest()
             )
-            if derive_scid(last_version_hash) != params["scid"]:
+            if not genesis_hash.startswith(last_version_hash):
                 raise ValueError("Invalid SCID derivation")
 
         timestamp, timestamp_raw = make_timestamp(timestamp_raw)

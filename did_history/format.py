@@ -8,10 +8,6 @@ import jsoncanon
 PLACEHOLDER = "{{SCID}}"
 
 
-def derive_scid(digest: str) -> str:
-    return digest[:24]
-
-
 def format_hash(digest: bytes) -> str:
     return base64.b32encode(digest).decode("ascii").lower().rstrip("=")
 

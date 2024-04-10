@@ -8,10 +8,9 @@ from typing import Tuple, Union
 import aiofiles
 import aiohttp
 
-from did_history.date_utils import make_timestamp
+from did_history.format import PLACEHOLDER
 from did_history.loader import load_history
 from did_history.resolver import ResolutionError, ResolutionResult, resolve_history
-from did_history.scid import PLACEHOLDER
 from did_history.state import DocumentMetadata, DocumentState
 from multiformats import multibase, multicodec
 

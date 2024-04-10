@@ -35,8 +35,10 @@ async def load_history(
             latest = prev
             break
         prev = latest
+
     if version_id and version_id != latest.version_id:
         raise ValueError(f"Cannot resolve versionId: {version_id}")
+
     return latest, DocumentMetadata(
         created=created,
         updated=latest.timestamp,
@@ -55,7 +57,10 @@ async def iter_history(
     async for line in history:
         if not line:
             continue
-        parts = json.loads(line)
+        try:
+            parts = json.loads(line)
+        except ValueError as e:
+            raise ValueError(f"Invalid history JSON: {e}")
         state = DocumentState.load_history_line(parts, prev_state)
 
         if verify_hash:

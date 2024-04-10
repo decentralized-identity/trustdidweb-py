@@ -55,8 +55,6 @@ async def iter_history(
     prev_state = None
 
     async for line in history:
-        if not line:
-            continue
         try:
             parts = json.loads(line)
         except ValueError as e:

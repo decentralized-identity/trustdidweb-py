@@ -22,7 +22,7 @@ MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
 
 METHOD_NAME = "tdw"
 
-HISTORY_FILENAME = "did.log"
+HISTORY_FILENAME = "did.jsonl"
 
 
 async def provision_did(

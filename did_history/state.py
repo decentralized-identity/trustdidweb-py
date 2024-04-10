@@ -156,26 +156,9 @@ class DocumentState:
         ):
             raise ValueError("Invalid history data")
 
-        params = prev_state.params.copy() if prev_state else {}
-        for param, pvalue in params_update.items():
-            if param == "method":
-                # FIXME - validate method parameter
-                pass
-            elif param == "hash":
-                if pvalue != "sha2-256":
-                    raise ValueError("Unsupported hash parameter: {pvalue}")
-            elif param == "scid":
-                if prev_state:
-                    raise ValueError("Parameter 'scid' cannot be updated")
-            else:
-                raise ValueError(f"Unsupported history parameter: {param}")
-            if param is None:
-                if param in params:
-                    del params[param]
-            else:
-                params[param] = pvalue
-        if "method" not in params or "scid" not in params:
-            raise ValueError("Invalid initial parameters")
+        params = cls._update_params(
+            prev_state.params if prev_state else {}, params_update
+        )
 
         check_ver = prev_state.version_id + 1 if prev_state else 1
         if check_ver != version_id:
@@ -282,6 +265,48 @@ class DocumentState:
                 auth = parse_verification_method(auth, doc_id, vm_dict)
             auth_keys[auth] = vm_dict[auth]
         return auth_keys
+
+    @classmethod
+    def _update_params(cls, old_params: dict, new_params: dict) -> dict:
+        res = old_params.copy()
+        for param, pvalue in new_params.items():
+            if param == "deactivated":
+                if pvalue not in (None, True, False):
+                    raise ValueError(f"Unsupported value for 'deactivated' parameter")
+            elif param == "hash":
+                if pvalue != "sha2-256":
+                    raise ValueError("Unsupported 'hash' parameter: {pvalue}")
+            elif param == "method":
+                # FIXME - more flexible validation for method parameter?
+                if pvalue != "did:tdw:1":
+                    raise ValueError(f"Unsupported 'method' parameter: {pvalue}")
+            elif param == "moved":
+                if not isinstance(pvalue, str) or not pvalue:
+                    raise ValueError(
+                        f"Unsupported value for 'moved' parameter: {pvalue}"
+                    )
+            elif param == "scid":
+                if old_params:
+                    raise ValueError("Parameter 'scid' cannot be updated")
+                if not isinstance(pvalue, str) or not pvalue:
+                    raise ValueError(
+                        f"Unsupported value for 'scid' parameter: {pvalue}"
+                    )
+            elif param == "ttl":
+                if not isinstance(pvalue, int) or pvalue <= 0:
+                    raise ValueError(f"Unsupported value for 'ttl' parameter: {pvalue}")
+            else:
+                raise ValueError(f"Unsupported history parameter: {param}")
+
+            if pvalue is None:
+                if param in res:
+                    del res[param]
+            else:
+                res[param] = pvalue
+
+        if "method" not in res or "scid" not in res:
+            raise ValueError("Invalid initial parameters")
+        return res
 
 
 def parse_verification_method(method: dict, doc_id: str, method_dict: dict) -> str:

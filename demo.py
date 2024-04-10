@@ -149,14 +149,9 @@ async def demo(domain: str):
 #     assert resolution.document_metadata["versionId"] == "2"
 
 
-# async def test_resolve():
-#     print(await resolve_did("did:webnext:anywhy.ca:scid"))
-
 if __name__ == "__main__":
     if len(argv) > 1:
         domain = argv[1]
     else:
         domain = "domain.example"
     asyncio.run(demo(domain))
-
-# asyncio.run(test_resolve())

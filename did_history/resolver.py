@@ -1,3 +1,6 @@
+import json
+
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from typing import AsyncIterator, Optional, Union
@@ -44,6 +47,21 @@ class ResolutionResult:
         }
 
 
+@dataclass
+class DereferencingResult:
+    dereferencing_metadata: dict
+    content: str = ""
+    content_metadata: Optional[dict] = None
+
+    def serialize(self) -> dict:
+        return {
+            "@context": "https://w3id.org/did-resolution/v1",
+            "dereferencingMetadata": self.dereferencing_metadata,
+            "content": self.content,
+            "contentMetadata": self.content_metadata or {},
+        }
+
+
 async def resolve_history(
     document_id: str,
     history: AsyncIterator[str],
@@ -76,3 +94,65 @@ async def resolve_history(
             ).serialize()
         )
     return ResolutionResult(document=state.document, document_metadata=meta.serialize())
+
+
+def add_ref(doc_id: str, node: dict, refmap: dict):
+    reft = node.get("id")
+    if not isinstance(reft, str):
+        return
+    if reft.startswith("#"):
+        reft = doc_id + reft
+    elif "#" not in reft:
+        return
+    if reft in refmap:
+        raise ValueError(f"Duplicate reference: {reft}")
+    refmap[reft] = node
+
+
+def ref_map(document: dict) -> dict[str, dict]:
+    # indexing top-level collections only
+    doc_id = document.get("id")
+    if not isinstance(doc_id, str):
+        raise ValueError("Missing document id")
+    res = {}
+    for v in document.values():
+        if isinstance(v, dict):
+            add_ref(doc_id, v, res)
+        elif isinstance(v, list):
+            for vi in v:
+                if isinstance(vi, dict):
+                    add_ref(doc_id, vi, res)
+    return res
+
+
+def dereference(document: dict, reft: str) -> DereferencingResult:
+    try:
+        if not reft.startswith("#"):
+            raise ValueError("Expected reference to begin with '#'")
+        refts = ref_map(document)
+        reft = document["id"] + reft
+        if reft not in refts:
+            return DereferencingResult(
+                dereferencing_metadata=ResolutionError(
+                    "notFound", f"Reference not found: {reft}"
+                )
+            )
+    except ValueError as err:
+        return DereferencingResult(
+            dereferencing_metadata=ResolutionError("notFound", str(err)).serialize(),
+        )
+    res = deepcopy(refts[reft])
+    ctx = []
+    doc_ctx = document.get("@context")
+    if isinstance(doc_ctx, str):
+        ctx.append(doc_ctx)
+    elif isinstance(doc_ctx, list):
+        ctx.extend(doc_ctx)
+    node_ctx = res.get("@context")
+    if isinstance(node_ctx, str):
+        ctx.append(node_ctx)
+    elif isinstance(node_ctx, list):
+        ctx.extend(node_ctx)
+    if ctx:
+        res = {"@context": ctx, **res}
+    return DereferencingResult(dereferencing_metadata={}, content=json.dumps(res))

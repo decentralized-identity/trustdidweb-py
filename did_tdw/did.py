@@ -37,14 +37,17 @@ class DIDUrl:
         path = None
         query = None
         fragment = None
-        if "#" in url:
-            url, fragment = url.split("#", 1)
-        if "?" in url:
-            url, query = url.split("?", 1)
+        if (pos := url.find("#")) >= 0:
+            fragment = url[pos:]
+            url = url[:pos]
+        if (pos := url.find("?")) >= 0:
+            query = url[pos:]
+            url = url[:pos]
         # FIXME check fragment, query, path only contain pchars
         # [a-zA-Z0-9\-\._~%:@!\$&'()*+,;=]*
-        if "/" in url:
-            url, path = url.split("/", 1)
+        if (pos := url.find("/")) >= 0:
+            path = url[pos:]
+            url = url[:pos]
         parts = cls.PATTERN.match(url)
         if not parts:
             raise ValueError("Invalid DID URL")

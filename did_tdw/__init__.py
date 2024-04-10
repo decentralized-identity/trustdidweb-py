@@ -169,6 +169,7 @@ def did_history_url(didurl: DIDUrl) -> str:
 async def resolve_did(
     did: Union[DIDUrl, str],
     *,
+    local_history: Path = None,
     version_id: Union[int, str] = None,
     version_time: Union[datetime, str] = None,
 ) -> ResolutionResult:
@@ -177,20 +178,31 @@ async def resolve_did(
     else:
         didurl = did
     url = did_history_url(didurl)
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as req:
-                req.raise_for_status()
-                return await resolve_history(
-                    didurl.did,
-                    req.content,
-                    version_id=version_id,
-                    version_time=version_time,
-                    verify_state=verify_all,
-                )
-    except aiohttp.ClientError as err:
-        return ResolutionResult(
-            resolution_metadata=ResolutionError(
-                "invalidDid", f"Error fetching DID history: {str(err)}"
-            ).serialize()
-        )
+    if local_history:
+        # FIXME catch read errors
+        async with aiofiles.open(local_history, "r") as history:
+            return await resolve_history(
+                didurl.did,
+                history,
+                version_id=version_id,
+                version_time=version_time,
+                verify_state=verify_all,
+            )
+    else:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as req:
+                    req.raise_for_status()
+                    return await resolve_history(
+                        didurl.did,
+                        req.content,
+                        version_id=version_id,
+                        version_time=version_time,
+                        verify_state=verify_all,
+                    )
+        except aiohttp.ClientError as err:
+            return ResolutionResult(
+                resolution_metadata=ResolutionError(
+                    "notFound", f"Error fetching DID history: {str(err)}"
+                ).serialize()
+            )

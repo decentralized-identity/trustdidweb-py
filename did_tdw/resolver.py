@@ -1,10 +1,11 @@
 import argparse
 import asyncio
+import json
 
 from pathlib import Path
 
-from did_history.resolver import dereference
-from did_tdw import DIDUrl, load_history_path, resolve_did
+from did_history.resolver import dereference_fragment
+from did_tdw import DIDUrl, resolve_did, resolve_path
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="resolve a did:tdw DID URL")
@@ -14,8 +15,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     didurl = DIDUrl.decode(args.didurl)
-    if didurl.path:
-        raise RuntimeError("Path dereferencing not yet supported")
 
     query = didurl.query_dict
     version_id = query.get("versionId")
@@ -32,7 +31,9 @@ if __name__ == "__main__":
         )
     )
 
+    if didurl.path and result.document:
+        result = asyncio.run(resolve_path(result.document, didurl.path))
     if didurl.fragment and result.document:
-        result = dereference(result.document, didurl.fragment)
+        result = dereference_fragment(result.document, didurl.fragment)
 
-    print(result)
+    print(json.dumps(result.serialize(), indent=2))

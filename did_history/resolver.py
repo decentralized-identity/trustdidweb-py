@@ -96,7 +96,7 @@ async def resolve_history(
     return ResolutionResult(document=state.document, document_metadata=meta.serialize())
 
 
-def add_ref(doc_id: str, node: dict, refmap: dict):
+def add_ref(doc_id: str, node: dict, refmap: dict, all: set):
     reft = node.get("id")
     if not isinstance(reft, str):
         return
@@ -104,44 +104,69 @@ def add_ref(doc_id: str, node: dict, refmap: dict):
         reft = doc_id + reft
     elif "#" not in reft:
         return
-    if reft in refmap:
+    if reft in all:
         raise ValueError(f"Duplicate reference: {reft}")
+    all.add(reft)
     refmap[reft] = node
 
 
-def ref_map(document: dict) -> dict[str, dict]:
+def reference_map(document: dict) -> dict[str, dict]:
     # indexing top-level collections only
     doc_id = document.get("id")
     if not isinstance(doc_id, str):
         raise ValueError("Missing document id")
+    all = set()
     res = {}
-    for v in document.values():
+    for k, v in document.items():
+        if k == "@context":
+            continue
         if isinstance(v, dict):
-            add_ref(doc_id, v, res)
+            res[k] = {}
+            add_ref(doc_id, v, res[k], all)
         elif isinstance(v, list):
+            res[k] = {}
             for vi in v:
                 if isinstance(vi, dict):
-                    add_ref(doc_id, vi, res)
+                    add_ref(doc_id, vi, res[k], all)
     return res
 
 
-def dereference(document: dict, reft: str) -> DereferencingResult:
+def normalize_services(document: dict) -> list:
+    svcs = document.get("service", [])
+    if not isinstance(svcs, list):
+        svcs = [svcs]
+    for svc in svcs:
+        if not isinstance(svc, dict):
+            raise ValueError(
+                "Expected map or list of map entries for 'service' property"
+            )
+        svc_id = svc.get("id")
+        if not svc_id or not isinstance(svc_id, str) or "#" not in svc_id:
+            raise ValueError(f"Invalid service entry id: {svc_id}")
+    return svcs
+
+
+def dereference_fragment(document: dict, reft: str) -> DereferencingResult:
+    res = None
     try:
         if not reft.startswith("#"):
             raise ValueError("Expected reference to begin with '#'")
-        refts = ref_map(document)
+        refts = reference_map(document)
         reft = document["id"] + reft
-        if reft not in refts:
-            return DereferencingResult(
-                dereferencing_metadata=ResolutionError(
-                    "notFound", f"Reference not found: {reft}"
-                )
-            )
+        for blk in refts.values():
+            if reft in blk:
+                res = deepcopy(blk[reft])
+                break
     except ValueError as err:
         return DereferencingResult(
             dereferencing_metadata=ResolutionError("notFound", str(err)).serialize(),
         )
-    res = deepcopy(refts[reft])
+    if not res:
+        return DereferencingResult(
+            dereferencing_metadata=ResolutionError(
+                "notFound", f"Reference not found: {reft}"
+            ).serialize()
+        )
     ctx = []
     doc_ctx = document.get("@context")
     if isinstance(doc_ctx, str):

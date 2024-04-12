@@ -3,14 +3,21 @@ import urllib.parse
 
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import aiofiles
 import aiohttp
 
 from did_history.format import PLACEHOLDER
 from did_history.loader import load_history
-from did_history.resolver import ResolutionError, ResolutionResult, resolve_history
+from did_history.resolver import (
+    DereferencingResult,
+    ResolutionError,
+    ResolutionResult,
+    normalize_services,
+    reference_map,
+    resolve_history,
+)
 from did_history.state import DocumentMetadata, DocumentState
 from multiformats import multibase, multicodec
 
@@ -165,12 +172,50 @@ def did_history_url(didurl: DIDUrl) -> str:
     return "/".join((f"https://{host}{port}", *path, HISTORY_FILENAME))
 
 
+def extend_document_services(document: dict, access_url: str):
+    document["service"] = normalize_services(document)
+    pos = access_url.rfind("/")
+    if pos <= 0:
+        raise ValueError(f"Invalid access URL: {access_url}")
+    base_url = access_url[: pos + 1]
+    ref_map = reference_map(document)
+    doc_id = document["id"]
+
+    if doc_id + "#files" not in ref_map["service"]:
+        document["service"].append(
+            {
+                # FIXME will need to add @context if not provided already
+                "id": doc_id + "#files",
+                "type": "PathResolution",
+                "serviceEndpoint": base_url,
+            }
+        )
+
+    if doc_id + "#whois" not in ref_map["service"]:
+        document["service"].append(
+            {
+                "@context": "https://identity.foundation/linked-vp/contexts/v1",
+                "id": doc_id + "#whois",
+                "type": "LinkedVerifiablePresentation",
+                "serviceEndpoint": base_url + "whois.json",
+            }
+        )
+
+
+def find_service(document: dict, name: str) -> Optional[dict]:
+    if name.startswith("#"):
+        name = document["id"] + name
+    ref_map = reference_map(document)
+    return ref_map.get("service", {}).get(name)
+
+
 async def resolve_did(
     did: Union[DIDUrl, str],
     *,
     local_history: Path = None,
     version_id: Union[int, str] = None,
     version_time: Union[datetime, str] = None,
+    add_implicit: bool = True,
 ) -> ResolutionResult:
     if isinstance(did, str):
         didurl = DIDUrl.decode(did)
@@ -180,7 +225,7 @@ async def resolve_did(
     if local_history:
         # FIXME catch read errors
         async with aiofiles.open(local_history, "r") as history:
-            return await resolve_history(
+            result = await resolve_history(
                 didurl.did,
                 history,
                 version_id=version_id,
@@ -192,7 +237,7 @@ async def resolve_did(
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as req:
                     req.raise_for_status()
-                    return await resolve_history(
+                    result = await resolve_history(
                         didurl.did,
                         req.content,
                         version_id=version_id,
@@ -203,5 +248,45 @@ async def resolve_did(
             return ResolutionResult(
                 resolution_metadata=ResolutionError(
                     "notFound", f"Error fetching DID history: {str(err)}"
+                ).serialize()
+            )
+
+    if result.document and add_implicit:
+        extend_document_services(result.document, url)
+    return result
+
+
+def resolve_path_to_url(document: dict, path: str) -> str:
+    files = find_service(document, "#files")
+    if files:
+        endpt = files.get("serviceEndpoint")
+        if isinstance(endpt, str):
+            return urllib.parse.urljoin(endpt, path.removeprefix("/"))
+
+
+async def resolve_path(document: dict, path: str) -> DereferencingResult:
+    url = resolve_path_to_url(document, path)
+    if not url:
+        return DereferencingResult(
+            dereferencing_metadata=ResolutionError(
+                "notFound", "Unable to resolve relative path"
+            ).serialize()
+        )
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url) as req:
+                req.raise_for_status()
+                # FIXME binary content?
+                content = await req.text()
+                return DereferencingResult(
+                    content=content,
+                    # FIXME add content type
+                    content_metadata={},
+                    dereferencing_metadata={},
+                )
+        except aiohttp.ClientError as err:
+            return DereferencingResult(
+                dereferencing_metadata=ResolutionError(
+                    "notFound", f"Error fetching relative path: {str(err)}"
                 ).serialize()
             )

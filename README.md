@@ -31,3 +31,11 @@ For testing purposes, a new DID can be minted along with a couple test updates u
 ```sh
 python3 demo.py domain.example
 ```
+
+## Contributing
+
+Pull requests are welcome! Please read our [contributions guide](./CONTRIBUTING.md) and submit your PRs. We enforce [developer certificate of origin](https://developercertificate.org/) (DCO) commit signing — [guidance](https://github.com/apps/dco) on this is available. We also welcome issues submitted about problems you encounter in using Trust DID Web - Python.
+
+## License
+
+[Apache License Version 2.0](LICENSE)

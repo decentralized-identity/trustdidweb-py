@@ -10,7 +10,7 @@ import jsonpatch
 
 from .date_utils import format_datetime, make_timestamp
 from .format import (
-    PLACEHOLDER,
+    SCID_PLACEHOLDER,
     format_hash,
     normalize_genesis,
     normalize_log_line,
@@ -67,7 +67,7 @@ class DocumentState:
         scid = genesis_hash[:scid_length]
         if isinstance(document, dict):
             document = json.dumps(document)
-        doc_v1 = json.loads(document.replace(PLACEHOLDER, scid))
+        doc_v1 = json.loads(document.replace(SCID_PLACEHOLDER, scid))
         doc_id = doc_v1.get("id")
         if not isinstance(doc_id, str):
             raise ValueError("Expected string for document id")

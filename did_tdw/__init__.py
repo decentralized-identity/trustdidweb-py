@@ -8,7 +8,7 @@ from typing import Optional, Tuple, Union
 import aiofiles
 import aiohttp
 
-from did_history.format import PLACEHOLDER
+from did_history.format import SCID_PLACEHOLDER
 from did_history.loader import load_history
 from did_history.resolver import (
     DereferencingResult,
@@ -121,7 +121,7 @@ def genesis_document(domain: str, keys: list[SigningKey]) -> str:
     """
     doc = {
         "@context": [DID_CONTEXT, MKEY_CONTEXT],
-        "id": f"did:{METHOD_NAME}:{domain}:{PLACEHOLDER}",
+        "id": f"did:{METHOD_NAME}:{domain}:{SCID_PLACEHOLDER}",
         "authentication": [],
         "verificationMethod": [],
     }
@@ -256,16 +256,18 @@ async def resolve_did(
     return result
 
 
-def resolve_path_to_url(document: dict, path: str) -> str:
-    files = find_service(document, "#files")
-    if files:
-        endpt = files.get("serviceEndpoint")
+def resolve_relative_ref_to_url(document: dict, service: str, relative_ref: str) -> str:
+    svc = find_service(document, f"#{service}")
+    if svc:
+        endpt = svc.get("serviceEndpoint")
         if isinstance(endpt, str):
-            return urllib.parse.urljoin(endpt, path.removeprefix("/"))
+            return urllib.parse.urljoin(endpt, relative_ref.removeprefix("/"))
 
 
-async def resolve_path(document: dict, path: str) -> DereferencingResult:
-    url = resolve_path_to_url(document, path)
+async def resolve_relative_ref(
+    document: dict, service: str, relative_ref: str
+) -> DereferencingResult:
+    url = resolve_relative_ref_to_url(document, service, relative_ref)
     if not url:
         return DereferencingResult(
             dereferencing_metadata=ResolutionError(

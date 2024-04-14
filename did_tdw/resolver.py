@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from did_history.resolver import dereference_fragment
-from did_tdw import DIDUrl, resolve_did, resolve_path
+from did_tdw import DIDUrl, resolve_did, resolve_relative_ref
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="resolve a did:tdw DID URL")
@@ -17,9 +17,16 @@ if __name__ == "__main__":
     didurl = DIDUrl.decode(args.didurl)
 
     query = didurl.query_dict
+    relative_ref = query.get("relativeRef")
+    service_name = query.get("service")
     version_id = query.get("versionId")
     version_time = query.get("versionTime")
     # FIXME reject unknown query parameters?
+
+    if didurl.path:
+        # if service_name or relative_ref: invalid?
+        service_name = "files"
+        relative_ref = didurl.path
 
     local_history = Path(args.file) if args.file else None
     result = asyncio.run(
@@ -31,9 +38,12 @@ if __name__ == "__main__":
         )
     )
 
-    if didurl.path and result.document:
-        result = asyncio.run(resolve_path(result.document, didurl.path))
-    if didurl.fragment and result.document:
+    if service_name and relative_ref and result.document:
+        result = asyncio.run(
+            resolve_relative_ref(result.document, service_name, relative_ref)
+        )
+    elif didurl.fragment and result.document:
         result = dereference_fragment(result.document, didurl.fragment)
+    # FIXME relative_ref + fragment combination?
 
     print(json.dumps(result.serialize(), indent=2))

@@ -107,6 +107,7 @@ def eddsa_jcs_verify(state: DocumentState, proof: dict, method: dict):
 def verify_document_id(state: DocumentState, prev_state: DocumentState = None):
     scid = state.params["scid"]
     if scid not in state.document_id:
+        # FIXME must occur once, either as a subdomain component or path component
         raise ValueError("Missing SCID from document id")
 
 

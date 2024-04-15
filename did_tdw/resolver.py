@@ -4,17 +4,17 @@ import json
 
 from pathlib import Path
 
-from did_history.resolver import dereference_fragment
+from did_history.resolver import ResolutionError, ResolutionResult, dereference_fragment
 from did_tdw import DIDUrl, resolve_did, resolve_relative_ref
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="resolve a did:tdw DID URL")
-    parser.add_argument("-f", "--file", help="the path to a local DID history file")
-    parser.add_argument("--accept", help="specify the MIME type(s) to accept")
-    parser.add_argument("didurl", help="the DID URL to resolve")
-    args = parser.parse_args()
 
-    didurl = DIDUrl.decode(args.didurl)
+async def resolve(didurl: str, *, local_history: Path = None) -> dict:
+    try:
+        didurl = DIDUrl.decode(args.didurl)
+    except ValueError as err:
+        return ResolutionResult(
+            resolution_metadata=ResolutionError("invalidDid", str(err)).serialize()
+        ).serialize()
 
     query = didurl.query_dict
     relative_ref = query.get("relativeRef")
@@ -28,22 +28,29 @@ if __name__ == "__main__":
         service_name = "files"
         relative_ref = didurl.path
 
-    local_history = Path(args.file) if args.file else None
-    result = asyncio.run(
-        resolve_did(
-            didurl.root,
-            local_history=local_history,
-            version_id=version_id,
-            version_time=version_time,
-        )
+    result = await resolve_did(
+        didurl.root,
+        local_history=local_history,
+        version_id=version_id,
+        version_time=version_time,
     )
 
     if service_name and relative_ref and result.document:
-        result = asyncio.run(
-            resolve_relative_ref(result.document, service_name, relative_ref)
-        )
+        result = await resolve_relative_ref(result.document, service_name, relative_ref)
     elif didurl.fragment and result.document:
         result = dereference_fragment(result.document, didurl.fragment)
     # FIXME relative_ref + fragment combination?
 
-    print(json.dumps(result.serialize(), indent=2))
+    return result.serialize()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="resolve a did:tdw DID URL")
+    parser.add_argument("-f", "--file", help="the path to a local DID history file")
+    parser.add_argument("--accept", help="specify the MIME type(s) to accept")
+    parser.add_argument("didurl", help="the DID URL to resolve")
+    args = parser.parse_args()
+
+    result = asyncio.run(resolve(args.didurl, local_history=args.file))
+
+    print(json.dumps(result, indent=2))

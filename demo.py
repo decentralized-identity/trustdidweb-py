@@ -8,15 +8,17 @@ from sys import argv
 
 import aries_askar
 
+from did_history.state import DocumentState
 from did_history.date_utils import make_timestamp
-from did_tdw import (
-    DocumentState,
-    HISTORY_FILENAME,
+from did_tdw.provision import (
     add_auth_key,
     genesis_document,
-    load_history_path,
     provision_did,
     # resolve_did_history,
+)
+from did_tdw.history import (
+    HISTORY_FILENAME,
+    load_history_path,
     update_document_state,
     write_document_state,
 )
@@ -34,17 +36,18 @@ async def auto_generate_did(
     print(f"Generated inception key ({key_alg}): {kid}")
     sk = AskarSigningKey(key, kid)
     genesis = genesis_document(domain, [sk])
-    doc_path, state = await provision_did(genesis, sk)
+    doc_dir, state = await provision_did(genesis, sk)
+    log_document_state(doc_dir, state)
 
     sk._kid = state.document_id + sk._kid
     store = await aries_askar.Store.provision(
-        f"sqlite://{doc_path}/{STORE_FILENAME}", pass_key=pass_key
+        f"sqlite://{doc_dir}/{STORE_FILENAME}", pass_key=pass_key
     )
     async with store.session() as session:
         await session.insert_key(sk.kid, sk.key)
     await store.close()
 
-    return (doc_path, state, sk)
+    return (doc_dir, state, sk)
 
 
 def create_did_configuration(
@@ -72,6 +75,14 @@ def create_did_configuration(
     }
 
 
+def log_document_state(doc_dir: Path, state: DocumentState):
+    pretty = json.dumps(state.document, indent=2)
+    with open(doc_dir.joinpath(f"did-v{state.version_id}.json"), "w") as out:
+        print(pretty, file=out)
+
+    print(f"Wrote document v{state.version_id} to {doc_dir}")
+
+
 async def demo(domain: str):
     pass_key = "password"
     (doc_dir, state, sk) = await auto_generate_did(domain, "ed25519", pass_key=pass_key)
@@ -91,6 +102,7 @@ async def demo(domain: str):
     add_auth_key(doc, ctl_sk)
     state = update_document_state(state, doc, sk)  # sign with genesis key
     write_document_state(doc_dir, state)
+    log_document_state(doc_dir, state)
 
     # gen v3 - add services
     doc = state.document_copy()
@@ -115,6 +127,7 @@ async def demo(domain: str):
     doc["assertionMethod"] = [doc["authentication"][0]]  # enable VC signing
     state = update_document_state(state, doc, ctl_sk)  # sign with controller key
     write_document_state(doc_dir, state)
+    log_document_state(doc_dir, state)
 
     # verify history
     history_path = doc_dir.joinpath(HISTORY_FILENAME)

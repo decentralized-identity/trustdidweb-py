@@ -8,6 +8,7 @@ from typing import Optional, Tuple, Union
 import aiofiles
 import aiohttp
 
+from did_history.did import DIDUrl
 from did_history.format import SCID_PLACEHOLDER
 from did_history.loader import load_history
 from did_history.resolver import (
@@ -21,7 +22,6 @@ from did_history.resolver import (
 from did_history.state import DocumentMetadata, DocumentState
 from multiformats import multibase, multicodec
 
-from .did import DIDUrl
 from .proof import SigningKey, eddsa_jcs_sign, verify_document_id, verify_all
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"

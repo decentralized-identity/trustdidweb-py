@@ -3,8 +3,8 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from hashlib import sha256
-from typing import Optional, Union
+from hashlib import sha256, sha3_256
+from typing import Callable, Optional, TypeVar, Union
 
 import jsonpatch
 
@@ -16,7 +16,23 @@ from .format import (
     normalize_log_line,
 )
 
+HashFn = TypeVar("HashFn", bound=Callable[[bytes], bytes])
+
+HASH_FN_MAP: dict[str, HashFn] = {
+    "sha256": lambda b: sha256(b).digest(),
+    "sha3-256": lambda b: sha3_256(b).digest(),
+}
 MIN_SCID_LENGTH: int = 28
+
+
+def get_hash_fn(params: dict) -> HashFn:
+    hash_name = params.get("hash")
+    if hash_name is None:
+        hash_name = "sha256"
+    hash_f = HASH_FN_MAP.get(hash_name)
+    if not hash_f:
+        raise ValueError(f"Unsupported hash function: {hash_name}")
+    return hash_f
 
 
 @dataclass
@@ -56,10 +72,9 @@ class DocumentState:
         timestamp: Optional[Union[str, datetime]] = None,
         scid_length: int = None,
     ):
-        if "hash" in params and params["hash"] != "sha2-256":
-            raise ValueError(f"Unsupported hash function: {params['hash']}")
+        hash_fn = get_hash_fn(params)
         doc_norm = normalize_genesis(document)
-        genesis_hash = format_hash(sha256(doc_norm).digest())
+        genesis_hash = format_hash(hash_fn(doc_norm))
         if scid_length is None:
             scid_length = MIN_SCID_LENGTH
         elif scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
@@ -97,8 +112,9 @@ class DocumentState:
         return ret
 
     def calculate_hash(self) -> str:
+        hash_fn = get_hash_fn(self.params)
         return format_hash(
-            sha256(
+            hash_fn(
                 normalize_log_line(
                     [
                         self.last_version_hash,
@@ -108,7 +124,7 @@ class DocumentState:
                         self.document_update,
                     ]
                 )
-            ).digest()
+            )
         )
 
     def create_next(
@@ -182,10 +198,9 @@ class DocumentState:
             last_version_hash = params["scid"]
             if len(last_version_hash) < MIN_SCID_LENGTH:
                 raise ValueError("Invalid SCID length")
+            hash_fn = get_hash_fn(params)
             genesis_hash = format_hash(
-                sha256(
-                    normalize_genesis(document, check_scid=last_version_hash)
-                ).digest()
+                hash_fn(normalize_genesis(document, check_scid=last_version_hash))
             )
             if not genesis_hash.startswith(last_version_hash):
                 raise ValueError("Invalid SCID derivation")
@@ -274,7 +289,7 @@ class DocumentState:
                 if pvalue not in (None, True, False):
                     raise ValueError(f"Unsupported value for 'deactivated' parameter")
             elif param == "hash":
-                if pvalue != "sha2-256":
+                if pvalue is not None and pvalue not in HASH_FN_MAP:
                     raise ValueError("Unsupported 'hash' parameter: {pvalue}")
             elif param == "method":
                 # FIXME - more flexible validation for method parameter?

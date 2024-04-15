@@ -1,3 +1,5 @@
+import argparse
+import asyncio
 import json
 
 from datetime import datetime
@@ -64,12 +66,18 @@ async def provision_did(
     document: Union[str, dict],
     sk: SigningKey,
     *,
+    params: dict = None,
     timestamp: datetime = None,
+    scid_length: int = None,
 ) -> Tuple[Path, DocumentState]:
+    if not params:
+        params = {}
+    method = f"did:{METHOD_NAME}:1"
+    if "method" in params and params["method"] != method:
+        raise ValueError("Cannot override 'method' parameter")
+    params["method"] = method
     state = DocumentState.initial(
-        params={"method": f"did:{METHOD_NAME}:1"},
-        document=document,
-        timestamp=timestamp,
+        params=params, document=document, timestamp=timestamp, scid_length=scid_length
     )
     doc_id = state.document_id
     print(f"Initialized document: {doc_id}")

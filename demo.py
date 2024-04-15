@@ -8,14 +8,8 @@ from sys import argv
 
 import aries_askar
 
-from did_history.state import DocumentState
 from did_history.date_utils import make_timestamp
-from did_tdw.provision import (
-    add_auth_key,
-    genesis_document,
-    provision_did,
-    # resolve_did_history,
-)
+from did_history.state import DocumentState
 from did_tdw.history import (
     HISTORY_FILENAME,
     load_history_path,
@@ -23,20 +17,32 @@ from did_tdw.history import (
     write_document_state,
 )
 from did_tdw.proof import AskarSigningKey, SigningKey, eddsa_jcs_sign_raw
+from did_tdw.provision import (
+    add_auth_key,
+    genesis_document,
+    provision_did,
+)
 
 
 STORE_FILENAME = "keys.sqlite"
 
 
 async def auto_generate_did(
-    domain: str, key_alg: str, pass_key: str
+    domain: str,
+    key_alg: str,
+    pass_key: str,
+    *,
+    params: dict = None,
+    scid_length: int = None,
 ) -> Tuple[Path, DocumentState, SigningKey]:
     key = aries_askar.Key.generate(key_alg)
     kid = "#" + key.get_jwk_thumbprint()
     print(f"Generated inception key ({key_alg}): {kid}")
     sk = AskarSigningKey(key, kid)
     genesis = genesis_document(domain, [sk])
-    doc_dir, state = await provision_did(genesis, sk)
+    doc_dir, state = await provision_did(
+        genesis, sk, params=params, scid_length=scid_length
+    )
     log_document_state(doc_dir, state)
 
     sk._kid = state.document_id + sk._kid
@@ -83,9 +89,11 @@ def log_document_state(doc_dir: Path, state: DocumentState):
     print(f"Wrote document v{state.version_id} to {doc_dir}")
 
 
-async def demo(domain: str):
+async def demo(domain: str, *, params: dict = None, scid_length: int = None):
     pass_key = "password"
-    (doc_dir, state, sk) = await auto_generate_did(domain, "ed25519", pass_key=pass_key)
+    (doc_dir, state, sk) = await auto_generate_did(
+        domain, "ed25519", pass_key=pass_key, params=params, scid_length=scid_length
+    )
     created = state.timestamp
 
     # gen v2 - add external controller
@@ -167,4 +175,4 @@ if __name__ == "__main__":
         domain = argv[1]
     else:
         domain = "domain.example"
-    asyncio.run(demo(domain))
+    asyncio.run(demo(domain, params={"hash": "sha3-256"}))

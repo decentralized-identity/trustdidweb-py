@@ -21,7 +21,7 @@ from did_history.resolver import (
     resolve_history,
 )
 
-from .history import HISTORY_FILENAME, METHOD_NAME
+from .const import HISTORY_FILENAME, METHOD_NAME
 from .proof import verify_all
 
 

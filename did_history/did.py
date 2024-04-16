@@ -1,32 +1,21 @@
 import re
 
+from dataclasses import dataclass
+from typing import ClassVar
 from urllib.parse import parse_qs
 
 
+@dataclass
 class DIDUrl:
-    PATTERN = re.compile(
+    PATTERN: ClassVar[re.Pattern] = re.compile(
         "^did:([a-z0-9]+):((?:[a-zA-Z0-9%_\.\-]*:)*[a-zA-Z0-9%_\.\-]+)$"
     )
 
     method: str
     identifier: str
-    path: str
-    query: str
-    fragment: str
-
-    def __init__(
-        self,
-        method: str,
-        identifier: str,
-        path: str = None,
-        query: str = None,
-        fragment: str = None,
-    ):
-        self.method = method
-        self.identifier = identifier
-        self.path = path
-        self.query = query
-        self.fragment = fragment
+    path: str = None
+    query: str = None
+    fragment: str = None
 
     @property
     def root(self) -> "DIDUrl":
@@ -51,7 +40,13 @@ class DIDUrl:
         parts = cls.PATTERN.match(url)
         if not parts:
             raise ValueError("Invalid DID URL")
-        return DIDUrl(parts[1], parts[2], path, query, fragment)
+        return DIDUrl(
+            method=parts[1],
+            identifier=parts[2],
+            path=path,
+            query=query,
+            fragment=fragment,
+        )
 
     @property
     def did(self) -> str:

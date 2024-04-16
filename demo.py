@@ -3,57 +3,24 @@ import json
 
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
 from sys import argv
 
 import aries_askar
 
 from did_history.date_utils import make_timestamp
+from did_history.format import SCID_PLACEHOLDER
 from did_history.state import DocumentState
+from did_tdw.const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
 from did_tdw.history import (
-    HISTORY_FILENAME,
     load_history_path,
     update_document_state,
     write_document_state,
 )
 from did_tdw.proof import AskarSigningKey, SigningKey, eddsa_jcs_sign_raw
 from did_tdw.provision import (
-    add_auth_key,
-    genesis_document,
-    provision_did,
+    auto_generate_did,
+    encode_verification_method,
 )
-
-
-STORE_FILENAME = "keys.sqlite"
-
-
-async def auto_generate_did(
-    domain: str,
-    key_alg: str,
-    pass_key: str,
-    *,
-    params: dict = None,
-    scid_length: int = None,
-) -> Tuple[Path, DocumentState, SigningKey]:
-    key = aries_askar.Key.generate(key_alg)
-    kid = "#" + key.get_jwk_thumbprint()
-    print(f"Generated inception key ({key_alg}): {kid}")
-    sk = AskarSigningKey(key, kid)
-    genesis = genesis_document(domain, [sk])
-    doc_dir, state = await provision_did(
-        genesis, sk, params=params, scid_length=scid_length
-    )
-    log_document_state(doc_dir, state)
-
-    sk._kid = state.document_id + sk._kid
-    store = await aries_askar.Store.provision(
-        f"sqlite://{doc_dir}/{STORE_FILENAME}", pass_key=pass_key
-    )
-    async with store.session() as session:
-        await session.insert_key(sk.kid, sk.key)
-    await store.close()
-
-    return (doc_dir, state, sk)
 
 
 def create_did_configuration(
@@ -86,31 +53,40 @@ def log_document_state(doc_dir: Path, state: DocumentState):
     with open(doc_dir.joinpath(f"did-v{state.version_id}.json"), "w") as out:
         print(pretty, file=out)
 
-    print(f"Wrote document v{state.version_id} to {doc_dir}")
-
 
 async def demo(domain: str, *, params: dict = None, scid_length: int = None):
     pass_key = "password"
     (doc_dir, state, sk) = await auto_generate_did(
-        domain, "ed25519", pass_key=pass_key, params=params, scid_length=scid_length
+        f"did:tdw:{domain}:{SCID_PLACEHOLDER}",
+        "ed25519",
+        pass_key=pass_key,
+        params=params,
+        scid_length=scid_length,
     )
+    print(f"Provisioned DID: {state.document_id}")
+    log_document_state(doc_dir, state)
     created = state.timestamp
 
     # gen v2 - add external controller
     ctl_id = "did:example:controller"
     doc = state.document_copy()
     doc["controller"] = [doc["id"], ctl_id]
-    store_path = doc_dir.joinpath(STORE_FILENAME)
+    store_path = doc_dir.joinpath(ASKAR_STORE_FILENAME)
     ctl_key = aries_askar.Key.generate("ed25519")
-    ctl_sk = AskarSigningKey(ctl_key, ctl_id + "#" + ctl_key.get_jwk_thumbprint())
+    ctl_sk = AskarSigningKey(ctl_key)
+    ctl_vm = encode_verification_method(ctl_sk, controller=ctl_id)
+    ctl_sk.kid = ctl_vm["id"]
     store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
     async with store.session() as session:
         await session.insert_key(ctl_sk.kid, ctl_sk.key)
     await store.close()
-    add_auth_key(doc, ctl_sk)
+
+    doc["verificationMethod"].append(ctl_vm)
+    doc["authentication"].append(ctl_vm["id"])
     state = update_document_state(state, doc, sk)  # sign with genesis key
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
+    print(f"Wrote document v{state.version_id}")
 
     # gen v3 - add services
     doc = state.document_copy()
@@ -136,6 +112,7 @@ async def demo(domain: str, *, params: dict = None, scid_length: int = None):
     state = update_document_state(state, doc, ctl_sk)  # sign with controller key
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
+    print(f"Wrote document v{state.version_id}")
 
     # verify history
     history_path = doc_dir.joinpath(HISTORY_FILENAME)

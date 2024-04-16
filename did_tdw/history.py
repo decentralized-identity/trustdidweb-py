@@ -9,11 +9,8 @@ import aiofiles
 from did_history.loader import load_history
 from did_history.state import DocumentMetadata, DocumentState
 
+from .const import HISTORY_FILENAME
 from .proof import SigningKey, eddsa_jcs_sign, verify_document_id, verify_all
-
-
-HISTORY_FILENAME = "did.jsonl"
-METHOD_NAME = "tdw"
 
 
 def write_document_state(

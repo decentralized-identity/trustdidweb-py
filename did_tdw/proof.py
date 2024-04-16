@@ -1,19 +1,23 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from hashlib import sha256
+from typing import Optional
 
 import aries_askar
 import jsoncanon
 
 from did_history.date_utils import make_timestamp
+from did_history.did import DIDUrl
 from did_history.state import DocumentState
 from multiformats import multibase, multicodec
 
+from .const import METHOD_NAME
 
-class SigningKey(ABC):
+
+class VerifyingKey(ABC):
     @property
     @abstractmethod
-    def kid(self) -> str: ...
+    def kid(self) -> Optional[str]: ...
 
     @property
     @abstractmethod
@@ -23,12 +27,14 @@ class SigningKey(ABC):
     @abstractmethod
     def public_key_bytes(self) -> bytes: ...
 
+
+class SigningKey(VerifyingKey):
     @abstractmethod
     def sign_message(self, message: bytes) -> bytes: ...
 
 
 class AskarSigningKey(SigningKey):
-    def __init__(self, key: aries_askar.Key, kid: str):
+    def __init__(self, key: aries_askar.Key, *, kid: str = None):
         self._kid = kid
         self.key = key
 
@@ -37,8 +43,12 @@ class AskarSigningKey(SigningKey):
         return self.key.algorithm.value
 
     @property
-    def kid(self) -> str:
+    def kid(self) -> Optional[str]:
         return self._kid
+
+    @kid.setter
+    def kid(self, value: str):
+        self._kid = value
 
     @property
     def public_key_bytes(self) -> bytes:
@@ -104,11 +114,20 @@ def eddsa_jcs_verify(state: DocumentState, proof: dict, method: dict):
         raise ValueError("Invalid signature for proof")
 
 
-def verify_document_id(state: DocumentState, prev_state: DocumentState = None):
-    scid = state.params["scid"]
-    if scid not in state.document_id:
-        # FIXME must occur once, either as a subdomain component or path component
-        raise ValueError("Missing SCID from document id")
+def verify_document_id(doc_id: str, scid: str):
+    url = DIDUrl.decode(doc_id)
+    if url.root != url:
+        raise ValueError("Document identifier must be a DID")
+    if url.method != METHOD_NAME:
+        raise ValueError(f"Expected DID method to be '{METHOD_NAME}'")
+    domain, *path = url.identifier.split(":")
+    domain = domain.split(".")
+    dom_c = domain.count(scid)
+    path_c = path.count(scid)
+    if dom_c + path_c != 1:
+        raise ValueError("SCID must occur exactly once in document id")
+    if dom_c and scid in domain[-2:]:
+        raise ValueError("SCID must be a subdomain when it occurs in the domain name")
 
 
 def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
@@ -121,7 +140,7 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
     for proof in proofs:
         method_id = proof.get("verificationMethod")
         if not isinstance(method_id, str):
-            raise ValueError("Invalid proof verification method")
+            raise ValueError(f"Invalid proof verification method: {type(method_id)}")
         if "#" not in method_id:
             raise ValueError("Expected verification method reference with fragment")
         if method_id.startswith("#"):
@@ -143,5 +162,5 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
 
 
 def verify_all(state: DocumentState, prev_state: DocumentState = None):
-    verify_document_id(state, prev_state)
+    verify_document_id(state.document_id, state.params["scid"])
     verify_proofs(state, prev_state)

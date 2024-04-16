@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 from urllib.parse import parse_qs
 
+SCID_PLACEHOLDER = "{SCID}"
+
 
 @dataclass
 class DIDUrl:

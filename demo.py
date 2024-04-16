@@ -7,8 +7,8 @@ from sys import argv
 
 import aries_askar
 
+from did_history.did import SCID_PLACEHOLDER
 from did_history.date_utils import make_timestamp
-from did_history.format import SCID_PLACEHOLDER
 from did_history.state import DocumentState
 from did_tdw.const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
 from did_tdw.history import (

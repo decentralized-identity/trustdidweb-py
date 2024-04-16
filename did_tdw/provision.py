@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import base64
 import json
+import re
 
 from copy import deepcopy
 from datetime import datetime
@@ -12,16 +13,18 @@ from typing import Tuple, Union
 import aries_askar
 import jsoncanon
 
+from did_history.did import SCID_PLACEHOLDER, DIDUrl
 from did_history.state import DocumentState
 from multiformats import multibase, multicodec
 
 from .const import ASKAR_STORE_FILENAME, METHOD_NAME
 from .history import write_document_state
-from .proof import AskarSigningKey, VerifyingKey, eddsa_jcs_sign
+from .proof import AskarSigningKey, VerifyingKey, eddsa_jcs_sign, verify_document_id
 
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
+DOMAIN_PATTERN = re.compile("^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
 
 
 async def auto_generate_did(
@@ -113,3 +116,54 @@ def provision_did(
     return DocumentState.initial(
         params=params, document=document, timestamp=timestamp, scid_length=scid_length
     )
+
+
+def normalize_provision_id(domain_or_did: str) -> str:
+    if SCID_PLACEHOLDER not in domain_or_did:
+        # must be a domain
+        if ":" in domain_or_did:
+            raise ValueError("Missing SCID placeholder in DID")
+        if not DOMAIN_PATTERN.match(domain_or_did):
+            raise ValueError(f"Invalid domain name: {domain_or_did}")
+        return f"{domain_or_did}:{SCID_PLACEHOLDER}"
+    if not domain_or_did.startswith("did:"):
+        domain_or_did = f"did:{METHOD_NAME}:{domain_or_did}"
+    verify_document_id(domain_or_did.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__")
+    return domain_or_did
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="provision a new did:tdw DID")
+    # parser.add_argument(
+    #     "-i", "--input", help="the path to the genesis DID document (did.json)"
+    # )
+    # parser.add_argument("-o", "--output", help="the output path (did.jsonl)")
+    parser.add_argument(
+        "--hash", help="the name of the hash function (default sha-256)"
+    )
+    parser.add_argument(
+        "--length", type=int, help="the length of the SCID (default 28)"
+    )
+    parser.add_argument("did", help="the domain name or DID to provision")
+    args = parser.parse_args()
+
+    placeholder_id = normalize_provision_id(args.did)
+    params = {}
+    if args.hash:
+        params["hash"] = args.hash
+    doc_dir, state, _ = asyncio.run(
+        auto_generate_did(
+            placeholder_id,
+            "ed25519",
+            "password",
+            params=params,
+            scid_length=args.length,
+        )
+    )
+    doc_path = doc_dir.joinpath("did.json")
+    with open(doc_path, "w") as out:
+        print(
+            json.dumps(state.document),
+            file=out,
+        )
+    print(f"Provisioned DID in", doc_dir)

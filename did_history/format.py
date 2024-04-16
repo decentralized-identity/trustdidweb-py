@@ -5,7 +5,7 @@ from typing import Union
 
 import jsoncanon
 
-SCID_PLACEHOLDER = "{SCID}"
+from .did import SCID_PLACEHOLDER
 
 
 def format_hash(digest: bytes) -> str:

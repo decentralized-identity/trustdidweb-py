@@ -8,9 +8,9 @@ from typing import Callable, Optional, TypeVar, Union
 
 import jsonpatch
 
+from .did import SCID_PLACEHOLDER
 from .date_utils import format_datetime, make_timestamp
 from .format import (
-    SCID_PLACEHOLDER,
     format_hash,
     normalize_genesis,
     normalize_log_line,

@@ -13,12 +13,12 @@ from typing import Tuple, Union
 import aries_askar
 import jsoncanon
 
-from did_history.did import SCID_PLACEHOLDER, DIDUrl
+from did_history.did import SCID_PLACEHOLDER
 from did_history.state import DocumentState
 from multiformats import multibase, multicodec
 
-from .const import ASKAR_STORE_FILENAME, METHOD_NAME
-from .history import write_document_state
+from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
+from .history import load_history_path, write_document_state
 from .proof import AskarSigningKey, VerifyingKey, eddsa_jcs_sign, verify_document_id
 
 
@@ -27,7 +27,7 @@ MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
 DOMAIN_PATTERN = re.compile("^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
 
 
-async def auto_generate_did(
+async def auto_provision_did(
     placeholder_id: str,
     key_alg: str,
     pass_key: str,
@@ -53,6 +53,9 @@ async def auto_generate_did(
 
     state.proofs.append(eddsa_jcs_sign(state, sk, timestamp=state.timestamp))
     write_document_state(doc_dir, state)
+
+    # verify log
+    await load_history_path(doc_dir.joinpath(HISTORY_FILENAME))
 
     return (doc_dir, state, sk)
 
@@ -125,7 +128,7 @@ def normalize_provision_id(domain_or_did: str) -> str:
             raise ValueError("Missing SCID placeholder in DID")
         if not DOMAIN_PATTERN.match(domain_or_did):
             raise ValueError(f"Invalid domain name: {domain_or_did}")
-        return f"{domain_or_did}:{SCID_PLACEHOLDER}"
+        return f"did:{METHOD_NAME}:{domain_or_did}:{SCID_PLACEHOLDER}"
     if not domain_or_did.startswith("did:"):
         domain_or_did = f"did:{METHOD_NAME}:{domain_or_did}"
     verify_document_id(domain_or_did.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__")
@@ -134,10 +137,11 @@ def normalize_provision_id(domain_or_did: str) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="provision a new did:tdw DID")
-    # parser.add_argument(
-    #     "-i", "--input", help="the path to the genesis DID document (did.json)"
-    # )
-    # parser.add_argument("-o", "--output", help="the output path (did.jsonl)")
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="automatically provision a new key using a local Askar store",
+    )
     parser.add_argument(
         "--hash", help="the name of the hash function (default sha-256)"
     )
@@ -147,12 +151,16 @@ if __name__ == "__main__":
     parser.add_argument("did", help="the domain name or DID to provision")
     args = parser.parse_args()
 
+    if not args.auto:
+        print("Only automatic provisioning (--auto) is currently supported")
+        raise SystemExit()
+
     placeholder_id = normalize_provision_id(args.did)
     params = {}
     if args.hash:
         params["hash"] = args.hash
     doc_dir, state, _ = asyncio.run(
-        auto_generate_did(
+        auto_provision_did(
             placeholder_id,
             "ed25519",
             "password",
@@ -163,7 +171,7 @@ if __name__ == "__main__":
     doc_path = doc_dir.joinpath("did.json")
     with open(doc_path, "w") as out:
         print(
-            json.dumps(state.document),
+            json.dumps(state.document, indent=2),
             file=out,
         )
     print(f"Provisioned DID in", doc_dir)

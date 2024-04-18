@@ -18,7 +18,7 @@ from did_tdw.history import (
 )
 from did_tdw.proof import AskarSigningKey, SigningKey, eddsa_jcs_sign_raw
 from did_tdw.provision import (
-    auto_generate_did,
+    auto_provision_did,
     encode_verification_method,
 )
 
@@ -56,7 +56,7 @@ def log_document_state(doc_dir: Path, state: DocumentState):
 
 async def demo(domain: str, *, params: dict = None, scid_length: int = None):
     pass_key = "password"
-    (doc_dir, state, sk) = await auto_generate_did(
+    (doc_dir, state, sk) = await auto_provision_did(
         f"did:tdw:{domain}:{SCID_PLACEHOLDER}",
         "ed25519",
         pass_key=pass_key,

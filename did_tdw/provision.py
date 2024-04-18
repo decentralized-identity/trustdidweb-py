@@ -19,7 +19,7 @@ from multiformats import multibase, multicodec
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
 from .history import load_history_path, write_document_state
-from .proof import AskarSigningKey, VerifyingKey, eddsa_jcs_sign, verify_document_id
+from .proof import AskarSigningKey, VerifyingKey, di_jcs_sign, verify_document_id
 
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
@@ -51,7 +51,7 @@ async def auto_provision_did(
         await session.insert_key(sk.kid, sk.key)
     await store.close()
 
-    state.proofs.append(eddsa_jcs_sign(state, sk, timestamp=state.timestamp))
+    state.proofs.append(di_jcs_sign(state, sk, timestamp=state.timestamp))
     write_document_state(doc_dir, state)
 
     # verify log
@@ -61,9 +61,8 @@ async def auto_provision_did(
 
 
 def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict:
-    if vk.algorithm == "ed25519":
-        pk_codec = "ed25519-pub"
-    else:
+    pk_codec = vk.multicodec_name
+    if not pk_codec:
         raise ValueError(f"Unsupported signing key type: {vk.algorithm}")
     mkey = multibase.encode(multicodec.wrap(pk_codec, vk.public_key_bytes), "base58btc")
     keydef = {
@@ -143,6 +142,10 @@ if __name__ == "__main__":
         help="automatically provision a new key using a local Askar store",
     )
     parser.add_argument(
+        "--algorithm",
+        help="the signing key algorithm (default ed25519)",
+    )
+    parser.add_argument(
         "--hash", help="the name of the hash function (default sha-256)"
     )
     parser.add_argument(
@@ -162,7 +165,7 @@ if __name__ == "__main__":
     doc_dir, state, _ = asyncio.run(
         auto_provision_did(
             placeholder_id,
-            "ed25519",
+            args.algorithm or "ed25519",
             "password",
             params=params,
             scid_length=args.length,

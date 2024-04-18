@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from hashlib import sha256
+from hashlib import sha256, sha384
 from typing import Optional
 
 import aries_askar
@@ -13,6 +13,27 @@ from multiformats import multibase, multicodec
 
 from .const import METHOD_NAME
 
+DI_SUPPORTED = [
+    {
+        "cryptosuite": "eddsa-jcs-2022",
+        "algorithm": "ed25519",
+        "multicodec_name": "ed25519-pub",
+        "hash": sha256,
+    },
+    {
+        "cryptosuite": "ecdsa-jcs-2019",
+        "algorithm": "p256",
+        "multicodec_name": "p256-pub",
+        "hash": sha256,
+    },
+    {
+        "cryptosuite": "ecdsa-jcs-2019",
+        "algorithm": "p384",
+        "multicodec_name": "p384-pub",
+        "hash": sha384,
+    },
+]
+
 
 class VerifyingKey(ABC):
     @property
@@ -22,6 +43,10 @@ class VerifyingKey(ABC):
     @property
     @abstractmethod
     def algorithm(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def multicodec_name(self) -> Optional[str]: ...
 
     @property
     @abstractmethod
@@ -51,6 +76,16 @@ class AskarSigningKey(SigningKey):
         self._kid = value
 
     @property
+    def multicodec_name(self) -> Optional[str]:
+        match self.key.algorithm:
+            case aries_askar.KeyAlg.ED25519:
+                return "ed25519-pub"
+            case aries_askar.KeyAlg.P256:
+                return "p256-pub"
+            case aries_askar.KeyAlg.P384:
+                return "p384-pub"
+
+    @property
     def public_key_bytes(self) -> bytes:
         return self.key.get_public_bytes()
 
@@ -58,10 +93,10 @@ class AskarSigningKey(SigningKey):
         return self.key.sign_message(message)
 
 
-def eddsa_jcs_sign(
+def di_jcs_sign(
     state: DocumentState, sk: SigningKey, timestamp: datetime = None
 ) -> dict:
-    return eddsa_jcs_sign_raw(
+    return di_jcs_sign_raw(
         state.document,
         sk,
         purpose="authentication",
@@ -70,45 +105,64 @@ def eddsa_jcs_sign(
     )
 
 
-def eddsa_jcs_sign_raw(
+def di_jcs_sign_raw(
     document: dict,
     sk: SigningKey,
     purpose: str,
     challenge: str = None,
     timestamp: datetime = None,
 ) -> dict:
+    alg = sk.algorithm
+    suite = None
+    for opt in DI_SUPPORTED:
+        if opt["algorithm"] == alg:
+            suite = opt
+            break
+    if not sk.kid:
+        raise ValueError(f"Missing key ID for signing key")
+    if not suite:
+        raise ValueError(f"Unsupported key algorithm: {alg}")
     proof = {
         "type": "DataIntegrityProof",
-        "cryptosuite": "eddsa-jcs-2022",
+        "cryptosuite": suite["cryptosuite"],
         "verificationMethod": sk.kid,
         "created": make_timestamp(timestamp)[1],
         "proofPurpose": purpose,
     }
     if challenge:
         proof["challenge"] = challenge
-    data_hash = sha256(jsoncanon.canonicalize(document)).digest()
-    options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
+    hash_fn = suite["hash"]
+    data_hash = hash_fn(jsoncanon.canonicalize(document)).digest()
+    options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
     proof["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
     return proof
 
 
-def eddsa_jcs_verify(state: DocumentState, proof: dict, method: dict):
+def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
     if proof.get("type") != "DataIntegrityProof":
         raise ValueError("Unsupported proof type")
     if proof.get("proofPurpose") != "authentication":
         raise ValueError("Expected proof purpose: 'authentication'")
-    if proof.get("cryptosuite") != "eddsa-jcs-2022":
-        raise ValueError("Unsupported cryptosuite for proof")
+    created = proof.get("created")
+    if created:
+        make_timestamp(created)  # validate timestamp formatting only
     key_mc = multibase.decode(method.get("publicKeyMultibase"))
     (codec, key_bytes) = multicodec.unwrap(key_mc)
-    if codec.name != "ed25519-pub":
-        raise ValueError(f"Unsupported key type: {codec.name}")
-    key = aries_askar.Key.from_public_bytes("ed25519", key_bytes)
-    data_hash = sha256(jsoncanon.canonicalize(state.document)).digest()
+    suite_name = proof.get("cryptosuite")
+    suite = None
+    for opt in DI_SUPPORTED:
+        if opt["cryptosuite"] == suite_name and opt["multicodec_name"] == codec.name:
+            suite = opt
+            break
+    if not suite:
+        raise ValueError(f"Unsupported cryptosuite for proof: {suite_name}/{codec}")
+    key = aries_askar.Key.from_public_bytes(suite["algorithm"], key_bytes)
+    hash_fn = suite["hash"]
+    data_hash = hash_fn(jsoncanon.canonicalize(state.document)).digest()
     proof = proof.copy()
     signature = multibase.decode(proof.pop("proofValue"))
-    options_hash = sha256(jsoncanon.canonicalize(proof)).digest()
+    options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
     if not key.verify_signature(sig_input, signature):
         raise ValueError("Invalid signature for proof")
@@ -154,7 +208,7 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
         if method_ctl not in controllers:
             raise ValueError(f"Controller is not authorized: {method_ctl}")
         vmethod = auth_keys[method_id]
-        eddsa_jcs_verify(
+        di_jcs_verify(
             state=state,
             proof=proof,
             method=vmethod,

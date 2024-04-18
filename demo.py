@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from sys import argv
+from time import perf_counter
 
 import aries_askar
 
@@ -16,7 +17,7 @@ from did_tdw.history import (
     update_document_state,
     write_document_state,
 )
-from did_tdw.proof import AskarSigningKey, SigningKey, eddsa_jcs_sign_raw
+from did_tdw.proof import AskarSigningKey, SigningKey, di_jcs_sign_raw
 from did_tdw.provision import (
     auto_provision_did,
     encode_verification_method,
@@ -41,7 +42,7 @@ def create_did_configuration(
             "origin": origin,
         },
     }
-    vc["proof"] = eddsa_jcs_sign_raw(vc, sk, "assertionMethod")
+    vc["proof"] = di_jcs_sign_raw(vc, sk, "assertionMethod")
     return {
         "@context": "https://identity.foundation/.well-known/did-configuration/v1",
         "linked_dids": [vc],
@@ -54,11 +55,14 @@ def log_document_state(doc_dir: Path, state: DocumentState):
         print(pretty, file=out)
 
 
-async def demo(domain: str, *, params: dict = None, scid_length: int = None):
+async def demo(
+    domain: str, *, key_alg: str = None, params: dict = None, scid_length: int = None
+):
     pass_key = "password"
+    key_alg = key_alg or "ed25519"
     (doc_dir, state, sk) = await auto_provision_did(
         f"did:tdw:{domain}:{SCID_PLACEHOLDER}",
-        "ed25519",
+        key_alg,
         pass_key=pass_key,
         params=params,
         scid_length=scid_length,
@@ -133,6 +137,19 @@ async def demo(domain: str, *, params: dict = None, scid_length: int = None):
         print(json.dumps(did_conf, indent=2), file=outdc)
     print("Wrote did-configuration.json")
 
+    # start = perf_counter()
+    # for i in range(1000):
+    #     doc["etc"] = i
+    #     state = update_document_state(state, doc, sk)
+    #     write_document_state(doc_dir, state)
+    # dur = perf_counter() - start
+    # print(f"Update duration: {dur:0.2f}")
+
+    # start = perf_counter()
+    # await load_history_path(history_path, verify_proofs=True)
+    # dur = perf_counter() - start
+    # print(f"Validate duration: {dur:0.2f}")
+
 
 #     # test resolver
 #     async with aiofiles.open(history_path) as history:
@@ -152,4 +169,4 @@ if __name__ == "__main__":
         domain = argv[1]
     else:
         domain = "domain.example"
-    asyncio.run(demo(domain, params={"hash": "sha3-256"}))
+    asyncio.run(demo(domain, key_alg="p384", params={"hash": "sha3-256"}))

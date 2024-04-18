@@ -10,7 +10,7 @@ from did_history.loader import load_history
 from did_history.state import DocumentMetadata, DocumentState
 
 from .const import HISTORY_FILENAME
-from .proof import SigningKey, eddsa_jcs_sign, verify_document_id, verify_all
+from .proof import SigningKey, di_jcs_sign, verify_document_id, verify_all
 
 
 def write_document_state(
@@ -60,5 +60,5 @@ def update_document_state(
     state = prev_state.create_next(
         document, params_update=params_update, timestamp=timestamp
     )
-    state.proofs.append(eddsa_jcs_sign(state, sk, timestamp=state.timestamp))
+    state.proofs.append(di_jcs_sign(state, sk, timestamp=state.timestamp))
     return state

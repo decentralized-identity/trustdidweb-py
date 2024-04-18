@@ -1,6 +1,6 @@
 import pytest
 
-from did_tdw.proof import verify_document_id
+from did_tdw.proof import check_document_id_format
 
 
 TEST_SCID = "0000000000000000000000000000"
@@ -32,10 +32,10 @@ INVALID_DID = [
 
 @pytest.mark.parametrize("did", VALID_DID)
 def test_valid_document_id(did: str):
-    verify_document_id(did, "0000000000000000000000000000")
+    check_document_id_format(did, "0000000000000000000000000000")
 
 
 @pytest.mark.parametrize("did", INVALID_DID)
 def test_invalid_document_id(did: str):
     with pytest.raises(ValueError):
-        verify_document_id(did, "0000000000000000000000000000")
+        check_document_id_format(did, "0000000000000000000000000000")

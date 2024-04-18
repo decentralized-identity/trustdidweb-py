@@ -19,7 +19,7 @@ from multiformats import multibase, multicodec
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
 from .history import load_history_path, write_document_state
-from .proof import AskarSigningKey, VerifyingKey, di_jcs_sign, verify_document_id
+from .proof import AskarSigningKey, VerifyingKey, check_document_id_format, di_jcs_sign
 
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
@@ -130,7 +130,9 @@ def normalize_provision_id(domain_or_did: str) -> str:
         return f"did:{METHOD_NAME}:{domain_or_did}:{SCID_PLACEHOLDER}"
     if not domain_or_did.startswith("did:"):
         domain_or_did = f"did:{METHOD_NAME}:{domain_or_did}"
-    verify_document_id(domain_or_did.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__")
+    check_document_id_format(
+        domain_or_did.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__"
+    )
     return domain_or_did
 
 
@@ -155,22 +157,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.auto:
-        print("Only automatic provisioning (--auto) is currently supported")
-        raise SystemExit()
+        raise SystemExit("Only automatic provisioning (--auto) is currently supported")
 
     placeholder_id = normalize_provision_id(args.did)
     params = {}
     if args.hash:
         params["hash"] = args.hash
-    doc_dir, state, _ = asyncio.run(
-        auto_provision_did(
-            placeholder_id,
-            args.algorithm or "ed25519",
-            "password",
-            params=params,
-            scid_length=args.length,
+
+    try:
+        doc_dir, state, _ = asyncio.run(
+            auto_provision_did(
+                placeholder_id,
+                args.algorithm or "ed25519",
+                "password",
+                params=params,
+                scid_length=args.length,
+            )
         )
-    )
+    except ValueError as err:
+        raise SystemExit(f"Provisioning failed: {err}")
+
     doc_path = doc_dir.joinpath("did.json")
     with open(doc_path, "w") as out:
         print(

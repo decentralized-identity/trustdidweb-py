@@ -168,7 +168,7 @@ def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
         raise ValueError("Invalid signature for proof")
 
 
-def verify_document_id(doc_id: str, scid: str):
+def check_document_id_format(doc_id: str, scid: str):
     url = DIDUrl.decode(doc_id)
     if url.root != url:
         raise ValueError("Document identifier must be a DID")
@@ -182,6 +182,10 @@ def verify_document_id(doc_id: str, scid: str):
         raise ValueError("SCID must occur exactly once in document id")
     if dom_c and scid in domain[-2:]:
         raise ValueError("SCID must be a subdomain when it occurs in the domain name")
+
+
+def verify_document_id(state: DocumentState, _prev_state: DocumentState = None):
+    check_document_id_format(state.document_id, state.params["scid"])
 
 
 def verify_proofs(state: DocumentState, prev_state: DocumentState = None):

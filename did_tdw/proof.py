@@ -220,5 +220,5 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
 
 
 def verify_all(state: DocumentState, prev_state: DocumentState = None):
-    verify_document_id(state.document_id, state.params["scid"])
+    check_document_id_format(state.document_id, state.params["scid"])
     verify_proofs(state, prev_state)

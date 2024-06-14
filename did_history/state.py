@@ -12,7 +12,6 @@ from .did import SCID_PLACEHOLDER
 from .date_utils import format_datetime, make_timestamp
 from .format import (
     format_hash,
-    normalize_genesis,
     normalize_log_line,
 )
 
@@ -72,44 +71,54 @@ class DocumentState:
         timestamp: Optional[Union[str, datetime]] = None,
         scid_length: int = None,
     ):
-        hash_fn = get_hash_fn(params)
-        doc_norm = normalize_genesis(document)
-        genesis_hash = format_hash(hash_fn(doc_norm))
         if scid_length is None:
             scid_length = MIN_SCID_LENGTH
-        elif scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
-            raise ValueError(f"Invalid SCID length: {scid_length}")
-        scid = genesis_hash[:scid_length]
-        if isinstance(document, dict):
-            document = json.dumps(document)
-        doc_v1 = json.loads(document.replace(SCID_PLACEHOLDER, scid))
-        doc_id = doc_v1.get("id")
+        timestamp, timestamp_raw = make_timestamp(timestamp)
+
+        if isinstance(document, str):
+            document_str = document
+            document = json.loads(document)
+        else:
+            document_str = json.dumps(document)
+
+        doc_id = document.get("id")
         if not isinstance(doc_id, str):
             raise ValueError("Expected string for document id")
-        if scid not in doc_id:
-            raise ValueError("SCID missing from document id")
+        if SCID_PLACEHOLDER not in doc_id:
+            raise ValueError("SCID placeholder missing from document id")
 
-        # debug: checking the SCID derivation
-        check_doc_norm = normalize_genesis(doc_v1, check_scid=scid)
-        assert check_doc_norm == doc_norm
-
-        timestamp, timestamp_raw = make_timestamp(timestamp)
-        params = {**params, "scid": scid}
-
-        ret = DocumentState(
+        params = {**params, "scid": SCID_PLACEHOLDER}
+        genesis = DocumentState(
             params=params,
             params_update=params.copy(),
-            document=doc_v1,
-            document_update={"value": deepcopy(doc_v1)},
+            document=document,
+            document_update={"value": deepcopy(document)},
             timestamp=timestamp,
             timestamp_raw=timestamp_raw,
             version_id=1,
             version_hash="",
-            last_version_hash=scid,
+            last_version_hash=SCID_PLACEHOLDER,
             proofs=[],
         )
-        ret.version_hash = ret.calculate_hash()
-        return ret
+        genesis_hash = genesis.calculate_hash()
+
+        if scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
+            raise ValueError(f"Invalid SCID length: {scid_length}")
+
+        scid = genesis_hash[:scid_length]
+        doc_v1 = json.loads(document_str.replace(SCID_PLACEHOLDER, scid))
+
+        genesis.params["scid"] = scid
+        genesis.params_update["scid"] = scid
+        genesis.document = doc_v1
+        genesis.document_update = {"value": deepcopy(doc_v1)}
+        genesis.last_version_hash = scid
+        genesis.version_hash = genesis.calculate_hash()
+
+        # ensure consistency
+        genesis.check_scid_derivation()
+
+        return genesis
 
     def calculate_hash(self) -> str:
         hash_fn = get_hash_fn(self.params)
@@ -126,6 +135,38 @@ class DocumentState:
                 )
             )
         )
+
+    def check_scid_derivation(self):
+        if self.version_id != 1:
+            raise ValueError("Expected versionId to be 1")
+        scid = self.params.get("scid")
+        if not scid or len(scid) < MIN_SCID_LENGTH:
+            raise ValueError("Invalid SCID length")
+        if self.last_version_hash != scid:
+            raise ValueError("Parameter 'scid' must match last version hash")
+        genesis_doc = json.loads(
+            json.dumps(self.document).replace(scid, SCID_PLACEHOLDER)
+        )
+        if genesis_doc == self.document:
+            print("doc:", self.document)
+            raise ValueError("SCID not found in document")
+        hash_fn = get_hash_fn(self.params)
+        genesis_hash = format_hash(
+            hash_fn(
+                normalize_log_line(
+                    [
+                        SCID_PLACEHOLDER,
+                        self.version_id,
+                        self.timestamp_raw,
+                        {**self.params, "scid": SCID_PLACEHOLDER},
+                        {"value": genesis_doc},
+                    ]
+                )
+            )
+        )
+        if not genesis_hash.startswith(scid):
+            print(genesis_hash, scid)
+            raise ValueError("Invalid SCID derivation")
 
     def create_next(
         self,
@@ -191,19 +232,10 @@ class DocumentState:
         if not isinstance(document, dict) or "id" not in document:
             raise ValueError("Invalid document state")
 
-        # check SCID derivation for first version
         if prev_state:
             last_version_hash = prev_state.version_hash
         else:
             last_version_hash = params["scid"]
-            if len(last_version_hash) < MIN_SCID_LENGTH:
-                raise ValueError("Invalid SCID length")
-            hash_fn = get_hash_fn(params)
-            genesis_hash = format_hash(
-                hash_fn(normalize_genesis(document, check_scid=last_version_hash))
-            )
-            if not genesis_hash.startswith(last_version_hash):
-                raise ValueError("Invalid SCID derivation")
 
         timestamp, timestamp_raw = make_timestamp(timestamp_raw)
 
@@ -212,7 +244,7 @@ class DocumentState:
         ):
             raise ValueError("Invalid proofs")
 
-        return DocumentState(
+        state = DocumentState(
             params=params,
             params_update=params_update,
             document=document,
@@ -224,6 +256,9 @@ class DocumentState:
             version_hash=version_hash,
             proofs=proofs,
         )
+        if not prev_state:
+            state.check_scid_derivation()
+        return state
 
     def history_line(self) -> list:
         return [

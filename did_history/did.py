@@ -10,7 +10,7 @@ SCID_PLACEHOLDER = "{SCID}"
 @dataclass
 class DIDUrl:
     PATTERN: ClassVar[re.Pattern] = re.compile(
-        "^did:([a-z0-9]+):((?:[a-zA-Z0-9%_\.\-]*:)*[a-zA-Z0-9%_\.\-]+)$"
+        r"^did:([a-z0-9]+):((?:[a-zA-Z0-9%_\.\-]*:)*[a-zA-Z0-9%_\.\-]+)$"
     )
 
     method: str

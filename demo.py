@@ -127,7 +127,7 @@ async def demo(
     assert check_state == state
     assert meta.created == created
     assert meta.updated == state.timestamp
-    assert meta.deactivated == False
+    assert meta.deactivated is False
     assert meta.version_id == 3
 
     # output did configuration

@@ -23,7 +23,7 @@ from .proof import AskarSigningKey, VerifyingKey, check_document_id_format, di_j
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
-DOMAIN_PATTERN = re.compile("^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
+DOMAIN_PATTERN = re.compile(r"^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
 
 
 async def auto_provision_did(

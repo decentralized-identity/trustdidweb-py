@@ -4,7 +4,7 @@ This repository includes Python libraries for working with `did:tdw` (Trust DID 
 
 ## Prerequisites
 
-This library requires Python 3.10 or newer. Dependencies are listed in requirements.txt and can be installed via:
+This library requires Python 3.10 or later. Dependencies are listed in requirements.txt and can be installed via:
 
 ```sh
 pip3 install -r requirements.txt
@@ -15,7 +15,7 @@ pip3 install -r requirements.txt
 A new `did:tdw` DID can be minted using the provision command. This will create a new Askar keystore for handling the signing key.
 
 ```sh
-python3 -m did_tdw.provision --auto "domain.example/{SCID}"
+python3 -m did_tdw.provision --auto "domain.example:{SCID}"
 ```
 
 This will output a new directory named after the new DID, containing `did.jsonl` (the DID log) and `did.json` (the current state of the document).
@@ -26,15 +26,23 @@ To automatically update the DID, edit `did.json` and execute the update command 
 python3 -m did_tdw.update --auto "did:tdw:domain.example:7ksi6mjn5ttpo7gw2ihz43dapmnl"
 ```
 
-## Testing
+## DID Resolution
 
-The test resolver script may be invoked via the command line:
+The resolver script may be invoked via the command line, and supports dereferencing of fragments and paths:
 
 ```sh
 python3 -m did_tdw.resolver "did:tdw:domain.example:26nkkrdjqpcfc5zgw6lgsgsgscrg"
 ```
 
-This script also accepts the path to the local DID history file:
+```sh
+python3 -m did_tdw.resolver "did:tdw:domain.example:26nkkrdjqpcfc5zgw6lgsgsgscrg#key-1"
+```
+
+```sh
+python3 -m did_tdw.resolver "did:tdw:domain.example:26nkkrdjqpcfc5zgw6lgsgsgscrg/myresource.json"
+```
+
+For testing, this script also accepts the path to the local DID history file:
 
 ```sh
 python3 -m did_tdw.resolver -f did.jsonl "did:tdw:domain.example:26nkkrdjqpcfc5zgw6lgsgsgscrg"

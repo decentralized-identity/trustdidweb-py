@@ -79,7 +79,7 @@ async def demo(
     ctl_key = aries_askar.Key.generate("ed25519")
     ctl_sk = AskarSigningKey(ctl_key)
     ctl_vm = encode_verification_method(ctl_sk, controller=ctl_id)
-    ctl_sk.kid = ctl_vm["id"]
+    ctl_sk.kid = ctl_sk.multikey
     store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
     async with store.session() as session:
         await session.insert_key(ctl_sk.kid, ctl_sk.key)
@@ -87,7 +87,10 @@ async def demo(
 
     doc["verificationMethod"].append(ctl_vm)
     doc["authentication"].append(ctl_vm["id"])
-    state = update_document_state(state, doc, sk)  # sign with genesis key
+    params_update = {"updateKeys": [*state.update_keys, ctl_sk.multikey]}
+    state = update_document_state(
+        state, doc, sk, params_update=params_update
+    )  # sign with genesis key
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
     print(f"Wrote document v{state.version_id}")
@@ -137,18 +140,18 @@ async def demo(
         print(json.dumps(did_conf, indent=2), file=outdc)
     print("Wrote did-configuration.json")
 
-    # start = perf_counter()
-    # for i in range(1000):
-    #     doc["etc"] = i
-    #     state = update_document_state(state, doc, sk)
-    #     write_document_state(doc_dir, state)
-    # dur = perf_counter() - start
-    # print(f"Update duration: {dur:0.2f}")
+    start = perf_counter()
+    for i in range(1000):
+        doc["etc"] = i
+        state = update_document_state(state, doc, sk)
+        write_document_state(doc_dir, state)
+    dur = perf_counter() - start
+    print(f"Update duration: {dur:0.2f}")
 
-    # start = perf_counter()
-    # await load_history_path(history_path, verify_proofs=True)
-    # dur = perf_counter() - start
-    # print(f"Validate duration: {dur:0.2f}")
+    start = perf_counter()
+    await load_history_path(history_path, verify_proofs=True)
+    dur = perf_counter() - start
+    print(f"Validate duration: {dur:0.2f}")
 
 
 #     # test resolver

@@ -15,7 +15,6 @@ import jsoncanon
 
 from did_history.did import SCID_PLACEHOLDER
 from did_history.state import DocumentState
-from multiformats import multibase, multicodec
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
 from .history import load_history_path, write_document_state
@@ -38,12 +37,16 @@ async def auto_provision_did(
     sk = AskarSigningKey(aries_askar.Key.generate(key_alg))
     vm = encode_verification_method(sk, placeholder_id)
     genesis = genesis_document(placeholder_id, [vm])
+    if not params:
+        params = {}
+    multikey = sk.multikey
+    params["updateKeys"] = [multikey]
     state = provision_did(genesis, params=params, scid_length=scid_length)
     doc_id = state.document_id
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
 
-    sk.kid = doc_id + vm["id"].removeprefix(placeholder_id)
+    sk.kid = multikey
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir}/{ASKAR_STORE_FILENAME}", pass_key=pass_key
     )
@@ -51,7 +54,13 @@ async def auto_provision_did(
         await session.insert_key(sk.kid, sk.key)
     await store.close()
 
-    state.proofs.append(di_jcs_sign(state, sk, timestamp=state.timestamp))
+    state.proofs.append(
+        di_jcs_sign(
+            state,
+            sk,
+            timestamp=state.timestamp,
+        )
+    )
     write_document_state(doc_dir, state)
 
     # verify log
@@ -61,13 +70,9 @@ async def auto_provision_did(
 
 
 def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict:
-    pk_codec = vk.multicodec_name
-    if not pk_codec:
-        raise ValueError(f"Unsupported signing key type: {vk.algorithm}")
-    mkey = multibase.encode(multicodec.wrap(pk_codec, vk.public_key_bytes), "base58btc")
     keydef = {
         "type": "Multikey",
-        "publicKeyMultibase": mkey,
+        "publicKeyMultibase": vk.multikey,
     }
     kid = vk.kid
     if not kid:
@@ -183,4 +188,4 @@ if __name__ == "__main__":
             json.dumps(state.document, indent=2),
             file=out,
         )
-    print(f"Provisioned DID in", doc_dir)
+    print("Provisioned DID in", doc_dir)

@@ -8,8 +8,9 @@ import jsoncanon
 
 from did_history.date_utils import make_timestamp
 from did_history.did import DIDUrl
+from did_history.key import MultiKey
 from did_history.state import DocumentState
-from multiformats import multibase, multicodec
+from multiformats import multibase
 
 from .const import METHOD_NAME
 
@@ -51,6 +52,10 @@ class VerifyingKey(ABC):
     @property
     @abstractmethod
     def public_key_bytes(self) -> bytes: ...
+
+    @property
+    def multikey(self) -> MultiKey:
+        return MultiKey.from_public_key(self.multicodec_name, self.public_key_bytes)
 
 
 class SigningKey(VerifyingKey):
@@ -94,7 +99,7 @@ class AskarSigningKey(SigningKey):
 
 
 def di_jcs_sign(
-    state: DocumentState, sk: SigningKey, timestamp: datetime = None
+    state: DocumentState, sk: SigningKey, *, timestamp: datetime = None, kid: str = None
 ) -> dict:
     return di_jcs_sign_raw(
         state.document,
@@ -102,6 +107,7 @@ def di_jcs_sign(
         purpose="authentication",
         challenge=state.version_hash,
         timestamp=timestamp,
+        kid=kid,
     )
 
 
@@ -109,8 +115,10 @@ def di_jcs_sign_raw(
     document: dict,
     sk: SigningKey,
     purpose: str,
+    *,
     challenge: str = None,
     timestamp: datetime = None,
+    kid: str = None,
 ) -> dict:
     alg = sk.algorithm
     suite = None
@@ -118,14 +126,16 @@ def di_jcs_sign_raw(
         if opt["algorithm"] == alg:
             suite = opt
             break
-    if not sk.kid:
-        raise ValueError(f"Missing key ID for signing key")
+    if not kid:
+        if not sk.kid:
+            raise ValueError("Missing key ID for signing")
+        kid = f"did:key:{sk.kid}#{sk.kid}"
     if not suite:
         raise ValueError(f"Unsupported key algorithm: {alg}")
     proof = {
         "type": "DataIntegrityProof",
         "cryptosuite": suite["cryptosuite"],
-        "verificationMethod": sk.kid,
+        "verificationMethod": kid,
         "created": make_timestamp(timestamp)[1],
         "proofPurpose": purpose,
     }
@@ -147,8 +157,8 @@ def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
     created = proof.get("created")
     if created:
         make_timestamp(created)  # validate timestamp formatting only
-    key_mc = multibase.decode(method.get("publicKeyMultibase"))
-    (codec, key_bytes) = multicodec.unwrap(key_mc)
+
+    (codec, key_bytes) = MultiKey(method.get("publicKeyMultibase")).decode()
     suite_name = proof.get("cryptosuite")
     suite = None
     for opt in DI_SUPPORTED:
@@ -193,8 +203,7 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
     proofs = state.proofs
     if not proofs:
         raise ValueError("Missing history version proof(s)")
-    controllers = (prev_state or state).controllers()
-    auth_keys = (prev_state or state).authentication_keys()
+    update_keys = (prev_state or state).update_keys
     for proof in proofs:
         method_id = proof.get("verificationMethod")
         if not isinstance(method_id, str):
@@ -202,16 +211,24 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
         if "#" not in method_id:
             raise ValueError("Expected verification method reference with fragment")
         if method_id.startswith("#"):
+            method_fragment = method_id[1:]
             method_id = doc_id + method_id
             method_ctl = doc_id
         else:
             fpos = method_id.find("#")
             method_ctl = method_id[:fpos]
-        if method_id not in auth_keys:
+            fpos = fpos + 1
+            method_fragment = method_id[fpos:]
+        if not method_ctl.startswith("did:key:"):
+            raise ValueError(f"Unsupported verification method: {method_id}")
+        method_key = method_ctl.removeprefix("did:key:")
+        if method_key != method_fragment:
+            raise ValueError(
+                f"Verification method fragment does not match public key: {method_id}"
+            )
+        if method_key not in update_keys:
             raise ValueError(f"Cannot resolve verification method: {method_id}")
-        if method_ctl not in controllers:
-            raise ValueError(f"Controller is not authorized: {method_ctl}")
-        vmethod = auth_keys[method_id]
+        vmethod = {"type": "Multikey", "publicKeyMultibase": method_key}
         di_jcs_verify(
             state=state,
             proof=proof,

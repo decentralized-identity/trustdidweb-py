@@ -281,6 +281,7 @@ class DocumentState:
     def document_copy(self) -> dict:
         return deepcopy(self.document)
 
+    @property
     def controllers(self) -> list[str]:
         ctls = self.document.get("controller")
         if ctls is None:
@@ -291,30 +292,13 @@ class DocumentState:
             raise ValueError("Invalid controller property")
         return ctls
 
-    def authentication_keys(self) -> dict[str, dict]:
-        doc_id = self.document_id
-        auth_keys = {}
-        vmethods = self.document.get("verificationMethod", [])
-        vm_dict = {}
-        if not isinstance(vmethods, list):
-            raise ValueError("Invalid verificationMethod property")
-        for method in vmethods:
-            _ = parse_verification_method(method, doc_id, vm_dict)
-        auths = self.document.get("authentication", [])
-        if not isinstance(auths, list):
-            raise ValueError("Invalid authentication property")
-        for auth in auths:
-            if isinstance(auth, str):
-                if auth.startswith("#"):
-                    auth = doc_id + auth
-                if auth not in vm_dict:
-                    raise ValueError(
-                        f"Cannot resolve authentication key reference: {auth}"
-                    )
-            elif isinstance(auth, dict):
-                auth = parse_verification_method(auth, doc_id, vm_dict)
-            auth_keys[auth] = vm_dict[auth]
-        return auth_keys
+    @property
+    def update_keys(self) -> list[str]:
+        upd_keys = self.params.get("updateKeys")
+        if isinstance(upd_keys, list):
+            if not all(isinstance(k, str) for k in upd_keys):
+                raise ValueError("Invalid updateKeys parameter")
+        return upd_keys or []
 
     @classmethod
     def _update_params(cls, old_params: dict, new_params: dict) -> dict:
@@ -322,31 +306,41 @@ class DocumentState:
         for param, pvalue in new_params.items():
             if param == "deactivated":
                 if pvalue not in (None, True, False):
-                    raise ValueError(f"Unsupported value for 'deactivated' parameter")
+                    raise ValueError("Unsupported value for 'deactivated' parameter")
             elif param == "hash":
                 if pvalue is not None and pvalue not in HASH_FN_MAP:
-                    raise ValueError("Unsupported 'hash' parameter: {pvalue}")
+                    raise ValueError(f"Unsupported 'hash' parameter: {pvalue!r}")
             elif param == "method":
                 # FIXME - more flexible validation for method parameter?
                 if pvalue != "did:tdw:1":
-                    raise ValueError(f"Unsupported 'method' parameter: {pvalue}")
+                    raise ValueError(f"Unsupported 'method' parameter: {pvalue!r}")
             elif param == "moved":
                 if not isinstance(pvalue, str) or not pvalue:
                     raise ValueError(
-                        f"Unsupported value for 'moved' parameter: {pvalue}"
+                        f"Unsupported value for 'moved' parameter: {pvalue!r}"
                     )
             elif param == "scid":
                 if old_params:
                     raise ValueError("Parameter 'scid' cannot be updated")
                 if not isinstance(pvalue, str) or not pvalue:
                     raise ValueError(
-                        f"Unsupported value for 'scid' parameter: {pvalue}"
+                        f"Unsupported value for 'scid' parameter: {pvalue!r}"
                     )
             elif param == "ttl":
                 if not isinstance(pvalue, int) or pvalue <= 0:
-                    raise ValueError(f"Unsupported value for 'ttl' parameter: {pvalue}")
+                    raise ValueError(
+                        f"Unsupported value for 'ttl' parameter: {pvalue!r}"
+                    )
+            elif param == "updateKeys":
+                if pvalue is not None and (
+                    not isinstance(pvalue, list)
+                    or not all(isinstance(k, str) for k in pvalue)
+                ):
+                    raise ValueError(
+                        f"Unsupported value for 'updateKeys' parameter: {pvalue!r}"
+                    )
             else:
-                raise ValueError(f"Unsupported history parameter: {param}")
+                raise ValueError(f"Unsupported history parameter: {param!r}")
 
             if pvalue is None:
                 if param in res:

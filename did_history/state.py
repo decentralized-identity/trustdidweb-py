@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256, sha3_256
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeAlias, Union
 
 import jsonpatch
 
@@ -15,7 +15,7 @@ from .format import (
     normalize_log_line,
 )
 
-HashFn = TypeVar("HashFn", bound=Callable[[bytes], bytes])
+HashFn: TypeAlias = Callable[[bytes], bytes]
 
 HASH_FN_MAP: dict[str, HashFn] = {
     "sha256": lambda b: sha256(b).digest(),
@@ -293,6 +293,10 @@ class DocumentState:
         return ctls
 
     @property
+    def prerotation(self) -> bool:
+        return self.params.get("prerotation", False)
+
+    @property
     def update_keys(self) -> list[str]:
         upd_keys = self.params.get("updateKeys")
         if isinstance(upd_keys, list):
@@ -319,6 +323,23 @@ class DocumentState:
                     raise ValueError(
                         f"Unsupported value for 'moved' parameter: {pvalue!r}"
                     )
+            elif param == "nextKeyHashes":
+                if pvalue is not None and (
+                    not isinstance(pvalue, list)
+                    or not all(isinstance(k, str) for k in pvalue)
+                ):
+                    raise ValueError(
+                        f"Unsupported value for 'nextKeyHashes' parameter: {pvalue!r}"
+                    )
+            elif param == "prerotation":
+                if pvalue not in (True, False):
+                    raise ValueError(
+                        f"Unsupported value for 'prerotation' parameter: {pvalue!r}"
+                    )
+                if old_params and old_params.get("prerotation") and not pvalue:
+                    raise ValueError(
+                        "Parameter 'prerotation' cannot be changed to False"
+                    )
             elif param == "scid":
                 if old_params:
                     raise ValueError("Parameter 'scid' cannot be updated")
@@ -339,6 +360,18 @@ class DocumentState:
                     raise ValueError(
                         f"Unsupported value for 'updateKeys' parameter: {pvalue!r}"
                     )
+                if old_params and old_params.get("prerotation"):
+                    next_keys = old_params.get("nextKeyHashes") or []
+                    old_keys = old_params.get("updateKeys") or []
+                    new_keys = set(pvalue) - set(old_keys)
+                    hash_fn = get_hash_fn(old_params)
+                    for new_key in new_keys:
+                        key_hash = format_hash(hash_fn(new_key.encode("utf-8")))
+                        if key_hash not in next_keys:
+                            raise ValueError(
+                                "New update key not listed in 'nextKeyHashes' "
+                                f"parameter: {new_key}"
+                            )
             else:
                 raise ValueError(f"Unsupported history parameter: {param!r}")
 

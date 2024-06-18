@@ -5,37 +5,21 @@
     "https://identity.foundation/.well-known/did-configuration/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
+  "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
   "authentication": [
-    "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw",
-    "did:example:controller#5vBEA3fYMEdPKos66YKkHiQ-adygbqQCEUdSt5int8A"
+    "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#z6MknVQ1dPZwBYRsXRtgxF82D5Sz79CCFRNLFwuy5jNo2iou"
   ],
-  "verificationMethod": [
-    {
-      "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw",
-      "type": "Multikey",
-      "controller": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
-      "publicKeyMultibase": "z6MkjJAeGtwXXYCJjtyQGt5L8MBhjcQoXCr5iXuyQ1UQ5q2N"
-    },
-    {
-      "id": "did:example:controller#5vBEA3fYMEdPKos66YKkHiQ-adygbqQCEUdSt5int8A",
-      "type": "Multikey",
-      "controller": "did:example:controller",
-      "publicKeyMultibase": "z6MkjTA7dLupSK291u5d7c4x6WPTB1bEnNALsgWzma5ij6Pc"
-    }
-  ],
-  "controller": [
-    "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
-    "did:example:controller"
+  "assertionMethod": [
+    "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#z6MknVQ1dPZwBYRsXRtgxF82D5Sz79CCFRNLFwuy5jNo2iou"
   ],
   "service": [
     {
-      "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#domain",
+      "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#domain",
       "type": "LinkedDomains",
       "serviceEndpoint": "https://domain.example"
     },
     {
-      "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#whois",
+      "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#whois",
       "type": "LinkedVerifiablePresentation",
       "serviceEndpoint": "https://domain.example/.well-known/whois.jsonld"
     }

@@ -1,0 +1,29 @@
+{
+  "@context": "https://identity.foundation/.well-known/did-configuration/v1",
+  "linked_dids": [
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://identity.foundation/.well-known/did-configuration/v1"
+      ],
+      "issuer": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
+      "validFrom": "2024-06-18T19:25:56Z",
+      "type": [
+        "VerifiableCredential",
+        "DomainLinkageCredential"
+      ],
+      "credentialSubject": {
+        "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
+        "origin": "https://domain.example"
+      },
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "ecdsa-jcs-2019",
+        "verificationMethod": "did:key:z82LkqR25TU88tztBEiFydNf4fUPn8oWBANckcmuqgonz9TAbK9a7WGQ5dm7jyqyRMpaRAe#z82LkqR25TU88tztBEiFydNf4fUPn8oWBANckcmuqgonz9TAbK9a7WGQ5dm7jyqyRMpaRAe",
+        "created": "2024-06-18T19:25:56Z",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "z2WCL2iMvxBtcmgGyEZK7D1WznHo83o5i5QrBeVdxs7nMRkhKWmQT2Jmn9NCbjWorj2PZBtpMrioVyDzFx7McdaZMEWpNhqkTZTAdqqPiSFpds2LYeZA5CLCs7M29u7Tzc6Wr"
+      }
+    }
+  ]
+}

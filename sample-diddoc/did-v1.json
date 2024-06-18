@@ -3,16 +3,5 @@
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
-  "authentication": [
-    "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw"
-  ],
-  "verificationMethod": [
-    {
-      "id": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq#ze7H2_Fd-5BDmbto6LIsKbE_v8SY8W4t5x0o9Eq9Kdw",
-      "type": "Multikey",
-      "controller": "did:tdw:domain.example:g656iho3hirvm4cznds5fihq",
-      "publicKeyMultibase": "z6MkjJAeGtwXXYCJjtyQGt5L8MBhjcQoXCr5iXuyQ1UQ5q2N"
-    }
-  ]
+  "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw"
 }

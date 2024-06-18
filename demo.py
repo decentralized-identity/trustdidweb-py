@@ -20,7 +20,6 @@ from did_tdw.history import (
 from did_tdw.proof import AskarSigningKey, SigningKey, di_jcs_sign_raw
 from did_tdw.provision import (
     auto_provision_did,
-    encode_verification_method,
 )
 
 
@@ -56,46 +55,63 @@ def log_document_state(doc_dir: Path, state: DocumentState):
 
 
 async def demo(
-    domain: str, *, key_alg: str = None, params: dict = None, scid_length: int = None
+    domain: str,
+    *,
+    key_alg: str = None,
+    params: dict = None,
+    scid_length: int = None,
+    perf_check: bool = False,
 ):
     pass_key = "password"
     key_alg = key_alg or "ed25519"
-    (doc_dir, state, sk) = await auto_provision_did(
+    (doc_dir, state, genesis_key) = await auto_provision_did(
         f"did:tdw:{domain}:{SCID_PLACEHOLDER}",
         key_alg,
         pass_key=pass_key,
-        params=params,
+        extra_params=params,
         scid_length=scid_length,
     )
     print(f"Provisioned DID: {state.document_id}")
     log_document_state(doc_dir, state)
     created = state.timestamp
-
-    # gen v2 - add external controller
-    ctl_id = "did:example:controller"
-    doc = state.document_copy()
-    doc["controller"] = [doc["id"], ctl_id]
     store_path = doc_dir.joinpath(ASKAR_STORE_FILENAME)
-    ctl_key = aries_askar.Key.generate("ed25519")
-    ctl_sk = AskarSigningKey(ctl_key)
-    ctl_vm = encode_verification_method(ctl_sk, controller=ctl_id)
-    ctl_sk.kid = ctl_sk.multikey
     store = await aries_askar.Store.open(f"sqlite://{store_path}", pass_key=pass_key)
+
+    if state.prerotation:
+        # generate replacement update key
+        rotate_key_hash = state.next_key_hashes[0]
+        next_update_key = AskarSigningKey.generate(key_alg)
+        next_key_hash = state.generate_next_key_hash(next_update_key.multikey)
+        async with store.session() as session:
+            await session.insert_key(
+                next_update_key.kid, next_update_key.key, tags={"hash": next_key_hash}
+            )
+            # fetch next update key by hash
+            fetched = await session.fetch_all_keys(tag_filter={"hash": rotate_key_hash})
+            if not fetched:
+                raise ValueError(
+                    f"Next update key not found in key store: {rotate_key_hash}"
+                )
+            update_key = AskarSigningKey(fetched[0].key)
+
+        # rotate to next update key
+        params_update = {
+            "updateKeys": [update_key.multikey],
+            "nextKeyHashes": [next_key_hash],
+        }
+        state = update_document_state(state, genesis_key, params_update=params_update)
+        write_document_state(doc_dir, state)
+        log_document_state(doc_dir, state)
+        print(f"Wrote document v{state.version_id}")
+    else:
+        update_key = genesis_key
+
+    # add services
+    doc = state.document_copy()
+    auth_key = AskarSigningKey.generate("ed25519")
+    auth_key.kid = doc["id"] + "#" + auth_key.multikey
     async with store.session() as session:
-        await session.insert_key(ctl_sk.kid, ctl_sk.key)
-    await store.close()
-
-    doc["verificationMethod"].append(ctl_vm)
-    doc["authentication"].append(ctl_vm["id"])
-    params_update = {"updateKeys": [*state.update_keys, ctl_sk.multikey]}
-    state = update_document_state(
-        state, doc, sk, params_update=params_update
-    )  # sign with genesis key
-    write_document_state(doc_dir, state)
-    log_document_state(doc_dir, state)
-    print(f"Wrote document v{state.version_id}")
-
-    # gen v3 - add services
+        await session.insert_key(auth_key.multikey, auth_key.key)
     doc = state.document_copy()
     doc["@context"].extend(
         [
@@ -103,6 +119,8 @@ async def demo(
             "https://identity.foundation/linked-vp/contexts/v1",
         ]
     )
+    doc["authentication"] = [auth_key.kid]
+    doc["assertionMethod"] = [auth_key.kid]
     doc["service"] = [
         {
             "id": doc["id"] + "#domain",
@@ -115,11 +133,12 @@ async def demo(
             "serviceEndpoint": f"https://{domain}/.well-known/whois.jsonld",
         },
     ]
-    doc["assertionMethod"] = [doc["authentication"][0]]  # enable VC signing
-    state = update_document_state(state, doc, ctl_sk)  # sign with controller key
+    state = update_document_state(state, update_key, document_update=doc)
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
     print(f"Wrote document v{state.version_id}")
+
+    await store.close()
 
     # verify history
     history_path = doc_dir.joinpath(HISTORY_FILENAME)
@@ -128,30 +147,35 @@ async def demo(
     assert meta.created == created
     assert meta.updated == state.timestamp
     assert meta.deactivated is False
-    assert meta.version_id == 3
+    if state.prerotation:
+        assert meta.version_id == 3
+    else:
+        assert meta.version_id == 2
 
     # output did configuration
     did_conf = create_did_configuration(
         doc["id"],
         f"https://{domain}",
-        sk,
+        genesis_key,
     )
     with open(doc_dir.joinpath("did-configuration.json"), "w") as outdc:
         print(json.dumps(did_conf, indent=2), file=outdc)
     print("Wrote did-configuration.json")
 
-    start = perf_counter()
-    for i in range(1000):
-        doc["etc"] = i
-        state = update_document_state(state, doc, sk)
-        write_document_state(doc_dir, state)
-    dur = perf_counter() - start
-    print(f"Update duration: {dur:0.2f}")
+    # performance check
+    if perf_check:
+        start = perf_counter()
+        for i in range(1000):
+            doc["etc"] = i
+            state = update_document_state(state, update_key, document_update=doc)
+            write_document_state(doc_dir, state)
+        dur = perf_counter() - start
+        print(f"Update duration: {dur:0.2f}")
 
-    start = perf_counter()
-    await load_history_path(history_path, verify_proofs=True)
-    dur = perf_counter() - start
-    print(f"Validate duration: {dur:0.2f}")
+        start = perf_counter()
+        await load_history_path(history_path, verify_proofs=True)
+        dur = perf_counter() - start
+        print(f"Validate duration: {dur:0.2f}")
 
 
 #     # test resolver
@@ -172,4 +196,6 @@ if __name__ == "__main__":
         domain = argv[1]
     else:
         domain = "domain.example"
-    asyncio.run(demo(domain, key_alg="p384", params={"hash": "sha3-256"}))
+    asyncio.run(
+        demo(domain, key_alg="p384", params={"hash": "sha3-256", "prerotation": True})
+    )

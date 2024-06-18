@@ -52,13 +52,15 @@ async def load_history_path(
 
 def update_document_state(
     prev_state: DocumentState,
-    document: dict,
-    sk: SigningKey,
+    update_key: SigningKey,
+    document_update: dict = None,
     params_update: dict = None,
     timestamp: Union[str, datetime] = None,
 ) -> DocumentState:
     state = prev_state.create_next(
-        document, params_update=params_update, timestamp=timestamp
+        document_update=document_update,
+        params_update=params_update,
+        timestamp=timestamp,
     )
-    state.proofs.append(di_jcs_sign(state, sk, timestamp=state.timestamp))
+    state.proofs.append(di_jcs_sign(state, update_key, timestamp=state.timestamp))
     return state

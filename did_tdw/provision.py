@@ -14,7 +14,8 @@ import aries_askar
 import jsoncanon
 
 from did_history.did import SCID_PLACEHOLDER
-from did_history.state import DocumentState
+from did_history.format import format_hash
+from did_history.state import DocumentState, get_hash_fn
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
 from .history import load_history_path, write_document_state
@@ -31,33 +32,41 @@ async def auto_provision_did(
     key_alg: str,
     pass_key: str,
     *,
-    params: dict = None,
+    extra_params: dict = None,
     scid_length: int = None,
 ) -> Tuple[Path, DocumentState, AskarSigningKey]:
-    sk = AskarSigningKey(aries_askar.Key.generate(key_alg))
-    vm = encode_verification_method(sk, placeholder_id)
-    genesis = genesis_document(placeholder_id, [vm])
-    if not params:
-        params = {}
-    multikey = sk.multikey
-    params["updateKeys"] = [multikey]
+    update_key = AskarSigningKey.generate(key_alg)
+    genesis = genesis_document(placeholder_id)
+    params = deepcopy(extra_params) if extra_params else {}
+    params["updateKeys"] = [update_key.multikey]
+    if params.get("prerotation"):
+        next_key = AskarSigningKey.generate(key_alg)
+        hash_fn = get_hash_fn(params)
+        next_key_hash = format_hash(hash_fn(next_key.multikey.encode("utf-8")))
+        params["nextKeyHashes"] = [next_key_hash]
+    else:
+        next_key = None
+        next_key_hash = None
     state = provision_did(genesis, params=params, scid_length=scid_length)
     doc_id = state.document_id
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
 
-    sk.kid = multikey
     store = await aries_askar.Store.provision(
         f"sqlite://{doc_dir}/{ASKAR_STORE_FILENAME}", pass_key=pass_key
     )
     async with store.session() as session:
-        await session.insert_key(sk.kid, sk.key)
+        await session.insert_key(update_key.kid, update_key.key)
+        if next_key:
+            await session.insert_key(
+                next_key.kid, next_key.key, tags={"hash": next_key_hash}
+            )
     await store.close()
 
     state.proofs.append(
         di_jcs_sign(
             state,
-            sk,
+            update_key,
             timestamp=state.timestamp,
         )
     )
@@ -66,7 +75,7 @@ async def auto_provision_did(
     # verify log
     await load_history_path(doc_dir.joinpath(HISTORY_FILENAME))
 
-    return (doc_dir, state, sk)
+    return (doc_dir, state, update_key)
 
 
 def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict:
@@ -92,7 +101,7 @@ def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict
     return {"id": kid, "controller": controller, **keydef}
 
 
-def genesis_document(placeholder_id: str, auth_keys: list[dict]) -> dict:
+def genesis_document(placeholder_id: str) -> dict:
     """
     Generate a standard genesis document from a set of verification keys.
 
@@ -102,8 +111,6 @@ def genesis_document(placeholder_id: str, auth_keys: list[dict]) -> dict:
     return {
         "@context": [DID_CONTEXT, MKEY_CONTEXT],
         "id": placeholder_id,
-        "authentication": [k["id"] for k in auth_keys],
-        "verificationMethod": [deepcopy(k) for k in auth_keys],
     }
 
 

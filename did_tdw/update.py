@@ -35,7 +35,7 @@ async def auto_update_did(
     )
     sk = None
     async with store.session() as session:
-        for kid in prev_state.authentication_keys().keys():
+        for kid in prev_state.update_keys:
             found = await session.fetch_key(kid)
             if found:
                 # FIXME check public key matches?
@@ -116,4 +116,4 @@ if __name__ == "__main__":
             json.dumps(state.document, indent=2),
             file=out,
         )
-    print(f"Updated DID in", doc_dir)
+    print("Updated DID in", doc_dir)

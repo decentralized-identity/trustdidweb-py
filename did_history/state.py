@@ -100,7 +100,7 @@ class DocumentState:
             last_version_hash=SCID_PLACEHOLDER,
             proofs=[],
         )
-        genesis_hash = genesis.calculate_hash()
+        genesis_hash = genesis.generate_hash()
 
         if scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
             raise ValueError(f"Invalid SCID length: {scid_length}")
@@ -113,14 +113,14 @@ class DocumentState:
         genesis.document = doc_v1
         genesis.document_update = {"value": deepcopy(doc_v1)}
         genesis.last_version_hash = scid
-        genesis.version_hash = genesis.calculate_hash()
+        genesis.version_hash = genesis.generate_hash()
 
         # ensure consistency
         genesis.check_scid_derivation()
 
         return genesis
 
-    def calculate_hash(self) -> str:
+    def generate_hash(self) -> str:
         hash_fn = get_hash_fn(self.params)
         return format_hash(
             hash_fn(
@@ -136,6 +136,10 @@ class DocumentState:
             )
         )
 
+    def generate_next_key_hash(self, multikey: str) -> str:
+        hash_fn = get_hash_fn(self.params)
+        return format_hash(hash_fn(multikey.encode("utf-8")))
+
     def check_scid_derivation(self):
         if self.version_id != 1:
             raise ValueError("Expected versionId to be 1")
@@ -148,7 +152,6 @@ class DocumentState:
             json.dumps(self.document).replace(scid, SCID_PLACEHOLDER)
         )
         if genesis_doc == self.document:
-            print("doc:", self.document)
             raise ValueError("SCID not found in document")
         hash_fn = get_hash_fn(self.params)
         genesis_hash = format_hash(
@@ -165,12 +168,11 @@ class DocumentState:
             )
         )
         if not genesis_hash.startswith(scid):
-            print(genesis_hash, scid)
             raise ValueError("Invalid SCID derivation")
 
     def create_next(
         self,
-        document: dict,
+        document_update: dict,
         params_update: dict = None,
         timestamp: Union[str, datetime] = None,
     ) -> "DocumentState":
@@ -180,8 +182,12 @@ class DocumentState:
         else:
             params_update = {}
         timestamp, timestamp_raw = make_timestamp(timestamp)
-        document = deepcopy(document)
-        doc_update = {"patch": jsonpatch.make_patch(self.document, document).patch}
+        if document_update is None:
+            document = deepcopy(self.document)
+            doc_update = {"value": deepcopy(document)}
+        else:
+            document = deepcopy(document_update)
+            doc_update = {"patch": jsonpatch.make_patch(self.document, document).patch}
         ret = DocumentState(
             params=params,
             params_update=params_update,
@@ -194,7 +200,7 @@ class DocumentState:
             version_hash="",
             proofs=[],
         )
-        ret.version_hash = ret.calculate_hash()
+        ret.version_hash = ret.generate_hash()
         return ret
 
     @classmethod
@@ -211,11 +217,24 @@ class DocumentState:
         if not isinstance(doc_update, dict) or not ("value" in doc_update) ^ (
             "patch" in doc_update
         ):
+            # FIXME allow an empty document update?
             raise ValueError("Invalid history data")
 
-        params = cls._update_params(
-            prev_state.params if prev_state else {}, params_update
-        )
+        old_params = prev_state.params if prev_state else {}
+        params = cls._update_params(old_params, params_update)
+        if old_params.get("prerotation") and "updateKeys" in params_update:
+            # new update keys must match old hashes
+            check_hashes = set(old_params.get("nextKeyHashes") or [])
+            new_keys = params.get("updateKeys") or []
+            hash_fn = get_hash_fn(old_params)
+            expect_hashes = set(
+                format_hash(hash_fn(new_key.encode("utf-8"))) for new_key in new_keys
+            )
+            if expect_hashes != check_hashes:
+                raise ValueError(
+                    "New value for 'updateKeys' does not correspond "
+                    "with 'nextKeyHashes' parameter"
+                )
 
         check_ver = prev_state.version_id + 1 if prev_state else 1
         if check_ver != version_id:
@@ -299,10 +318,22 @@ class DocumentState:
     @property
     def update_keys(self) -> list[str]:
         upd_keys = self.params.get("updateKeys")
-        if isinstance(upd_keys, list):
-            if not all(isinstance(k, str) for k in upd_keys):
-                raise ValueError("Invalid updateKeys parameter")
+        if upd_keys is not None and (
+            not isinstance(upd_keys, list)
+            or not all(isinstance(k, str) for k in upd_keys)
+        ):
+            raise ValueError("Invalid 'updateKeys' parameter")
         return upd_keys or []
+
+    @property
+    def next_key_hashes(self) -> list[str]:
+        next_keys = self.params.get("nextKeyHashes")
+        if next_keys is not None and (
+            not isinstance(next_keys, list)
+            or not all(isinstance(k, str) for k in next_keys)
+        ):
+            raise ValueError("Invalid 'nextKeyHashes' parameter")
+        return next_keys or []
 
     @classmethod
     def _update_params(cls, old_params: dict, new_params: dict) -> dict:
@@ -336,7 +367,7 @@ class DocumentState:
                     raise ValueError(
                         f"Unsupported value for 'prerotation' parameter: {pvalue!r}"
                     )
-                if old_params and old_params.get("prerotation") and not pvalue:
+                if old_params.get("prerotation") and not pvalue:
                     raise ValueError(
                         "Parameter 'prerotation' cannot be changed to False"
                     )
@@ -360,18 +391,6 @@ class DocumentState:
                     raise ValueError(
                         f"Unsupported value for 'updateKeys' parameter: {pvalue!r}"
                     )
-                if old_params and old_params.get("prerotation"):
-                    next_keys = old_params.get("nextKeyHashes") or []
-                    old_keys = old_params.get("updateKeys") or []
-                    new_keys = set(pvalue) - set(old_keys)
-                    hash_fn = get_hash_fn(old_params)
-                    for new_key in new_keys:
-                        key_hash = format_hash(hash_fn(new_key.encode("utf-8")))
-                        if key_hash not in next_keys:
-                            raise ValueError(
-                                "New update key not listed in 'nextKeyHashes' "
-                                f"parameter: {new_key}"
-                            )
             else:
                 raise ValueError(f"Unsupported history parameter: {param!r}")
 

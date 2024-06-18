@@ -1,13 +1,11 @@
 import json
 
 from datetime import datetime
-from typing import AsyncIterator, Callable, Optional, TypeVar, Tuple
+from typing import AsyncIterator, Callable, Optional, TypeAlias, Tuple
 
 from .state import DocumentMetadata, DocumentState
 
-VerifyState = TypeVar(
-    "VerifyState", bound=Callable[[DocumentState, Optional[DocumentState]], None]
-)
+VerifyState: TypeAlias = Callable[[DocumentState, Optional[DocumentState]], None]
 
 
 async def load_history(
@@ -62,7 +60,7 @@ async def iter_history(
         state = DocumentState.load_history_line(parts, prev_state)
 
         if verify_hash:
-            if state.calculate_hash() != state.version_hash:
+            if state.generate_hash() != state.version_hash:
                 raise ValueError("Invalid history version hash")
         if verify_state:
             verify_state(state, prev_state)

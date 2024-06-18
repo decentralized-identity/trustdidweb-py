@@ -65,8 +65,12 @@ class SigningKey(VerifyingKey):
 
 class AskarSigningKey(SigningKey):
     def __init__(self, key: aries_askar.Key, *, kid: str = None):
-        self._kid = kid
         self.key = key
+        self._kid = kid or self.multikey
+
+    @classmethod
+    def generate(cls, alg: str) -> "AskarSigningKey":
+        return AskarSigningKey(aries_askar.Key.generate(alg))
 
     @property
     def algorithm(self) -> str:
@@ -126,7 +130,7 @@ def di_jcs_sign_raw(
         if opt["algorithm"] == alg:
             suite = opt
             break
-    if not kid:
+    if kid is None:
         if not sk.kid:
             raise ValueError("Missing key ID for signing")
         kid = f"did:key:{sk.kid}#{sk.kid}"

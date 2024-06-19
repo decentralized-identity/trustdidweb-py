@@ -202,7 +202,7 @@ def verify_document_id(state: DocumentState, _prev_state: DocumentState = None):
     check_document_id_format(state.document_id, state.params["scid"])
 
 
-def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
+def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: bool):
     doc_id = state.document_id
     proofs = state.proofs
     if not proofs:
@@ -240,6 +240,8 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState = None):
         )
 
 
-def verify_all(state: DocumentState, prev_state: DocumentState = None):
+def verify_all(state: DocumentState, prev_state: DocumentState, is_final: bool):
     check_document_id_format(state.document_id, state.params["scid"])
-    verify_proofs(state, prev_state)
+    # FIXME add resolution context instead of is_final flag?
+    if state.version_id == 1 or state.is_auth_event or is_final:
+        verify_proofs(state, prev_state, is_final)

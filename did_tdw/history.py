@@ -45,7 +45,6 @@ async def load_history_path(
             history,
             version_id=version_id,
             version_time=version_time,
-            verify_hash=True,
             verify_state=verify_state,
         )
 

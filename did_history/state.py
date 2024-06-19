@@ -17,6 +17,7 @@ from .format import (
 
 HashFn: TypeAlias = Callable[[bytes], bytes]
 
+AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
 HASH_FN_MAP: dict[str, HashFn] = {
     "sha256": lambda b: sha256(b).digest(),
     "sha3-256": lambda b: sha3_256(b).digest(),
@@ -100,7 +101,7 @@ class DocumentState:
             last_version_hash=SCID_PLACEHOLDER,
             proofs=[],
         )
-        genesis_hash = genesis.generate_hash()
+        genesis_hash = genesis.generate_version_hash()
 
         if scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
             raise ValueError(f"Invalid SCID length: {scid_length}")
@@ -113,14 +114,14 @@ class DocumentState:
         genesis.document = doc_v1
         genesis.document_update = {"value": deepcopy(doc_v1)}
         genesis.last_version_hash = scid
-        genesis.version_hash = genesis.generate_hash()
+        genesis.version_hash = genesis.generate_version_hash()
 
         # ensure consistency
         genesis.check_scid_derivation()
 
         return genesis
 
-    def generate_hash(self) -> str:
+    def generate_version_hash(self) -> str:
         hash_fn = get_hash_fn(self.params)
         return format_hash(
             hash_fn(
@@ -135,6 +136,10 @@ class DocumentState:
                 )
             )
         )
+
+    def check_version_hash(self):
+        if self.generate_version_hash() != self.version_hash:
+            raise ValueError("Invalid version hash")
 
     def generate_next_key_hash(self, multikey: str) -> str:
         hash_fn = get_hash_fn(self.params)
@@ -200,7 +205,7 @@ class DocumentState:
             version_hash="",
             proofs=[],
         )
-        ret.version_hash = ret.generate_hash()
+        ret.version_hash = ret.generate_version_hash()
         return ret
 
     @classmethod
@@ -310,6 +315,10 @@ class DocumentState:
         elif not isinstance(ctls, list):
             raise ValueError("Invalid controller property")
         return ctls
+
+    @property
+    def is_auth_event(self) -> bool:
+        return not AUTH_PARAMS.isdisjoint(self.params_update.keys())
 
     @property
     def prerotation(self) -> bool:

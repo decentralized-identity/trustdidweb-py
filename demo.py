@@ -142,7 +142,7 @@ async def demo(
 
     # verify history
     history_path = doc_dir.joinpath(HISTORY_FILENAME)
-    check_state, meta = await load_history_path(history_path, verify_proofs=True)
+    check_state, meta = await load_history_path(history_path)
     assert check_state == state
     assert meta.created == created
     assert meta.updated == state.timestamp
@@ -173,7 +173,8 @@ async def demo(
         print(f"Update duration: {dur:0.2f}")
 
         start = perf_counter()
-        await load_history_path(history_path, verify_proofs=True)
+        (latest, meta) = await load_history_path(history_path)
+        assert latest == state
         dur = perf_counter() - start
         print(f"Validate duration: {dur:0.2f}")
 

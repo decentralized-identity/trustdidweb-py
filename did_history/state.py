@@ -3,35 +3,21 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from hashlib import sha256, sha3_256
-from typing import Callable, Optional, TypeAlias, Union
+from typing import Optional, Union
 
 import jsonpatch
 
 from .did import SCID_PLACEHOLDER
 from .date_utils import format_datetime, make_timestamp
 from .format import (
+    HashInfo,
     format_hash,
+    identify_hash,
     normalize_log_line,
 )
 
-HashFn: TypeAlias = Callable[[bytes], bytes]
 
 AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
-HASH_FN_MAP: dict[str, HashFn] = {
-    "sha256": lambda b: sha256(b).digest(),
-    "sha3-256": lambda b: sha3_256(b).digest(),
-}
-
-
-def get_hash_fn(params: dict) -> HashFn:
-    hash_name = params.get("hash")
-    if hash_name is None:
-        hash_name = "sha256"
-    hash_f = HASH_FN_MAP.get(hash_name)
-    if not hash_f:
-        raise ValueError(f"Unsupported hash function: {hash_name}")
-    return hash_f
 
 
 @dataclass
@@ -71,6 +57,7 @@ class DocumentState:
         params: dict,
         document: Union[str, dict],
         timestamp: Optional[Union[str, datetime]] = None,
+        hash_name: Optional[str] = None,
     ):
         timestamp, timestamp_raw = make_timestamp(timestamp)
 
@@ -99,7 +86,9 @@ class DocumentState:
             version_number=0,
             proofs=[],
         )
-        scid = genesis.generate_entry_hash()
+        hash_info = HashInfo.from_name(hash_name or "sha2-256")
+        scid = genesis.generate_entry_hash(hash_info)
+        genesis.version_id = scid
 
         doc_v1 = json.loads(document_str.replace(SCID_PLACEHOLDER, scid))
 
@@ -107,19 +96,20 @@ class DocumentState:
         genesis.params_update["scid"] = scid
         genesis.document = doc_v1
         genesis.document_update = {"value": deepcopy(doc_v1)}
-        genesis.last_version_id = scid
-        genesis.version_id = "1-" + genesis.generate_entry_hash()
-        genesis.version_number = 1
+        genesis.last_version_id = genesis.version_id
+        genesis.version_id = "1-" + genesis.generate_entry_hash(hash_info)
+        genesis.version_number = genesis.version_number + 1
 
         # ensure consistency
         genesis.check_scid_derivation()
 
         return genesis
 
-    def generate_entry_hash(self) -> str:
-        hash_fn = get_hash_fn(self.params)
+    def generate_entry_hash(self, hash_info: Optional[HashInfo] = None) -> str:
+        if not hash_info:
+            hash_info = self.get_hash_info()
         return format_hash(
-            hash_fn(
+            hash_info.hash(
                 normalize_log_line(
                     [
                         self.last_version_id,
@@ -131,14 +121,22 @@ class DocumentState:
             )
         )
 
+    def get_hash_info(self) -> HashInfo:
+        if self.version_id:
+            entry_hash = self.version_id.split("-", 1)[1]
+        else:
+            entry_hash = self.last_version_id.split("-", 1)[1]
+        info = identify_hash(entry_hash)
+        return info
+
     def check_version_id(self):
         entry_hash = self.generate_entry_hash()
         if self.version_id != f"{self.version_number}-{entry_hash}":
             raise ValueError("Invalid version ID")
 
     def generate_next_key_hash(self, multikey: str) -> str:
-        hash_fn = get_hash_fn(self.params)
-        return format_hash(hash_fn(multikey.encode("utf-8")))
+        info = self.get_hash_info()
+        return format_hash(info.hash(multikey.encode("utf-8")))
 
     def check_scid_derivation(self):
         if self.version_number != 1:
@@ -151,9 +149,9 @@ class DocumentState:
         )
         if genesis_doc == self.document:
             raise ValueError("SCID not found in document")
-        hash_fn = get_hash_fn(self.params)
+        hash_info = self.get_hash_info()
         genesis_hash = format_hash(
-            hash_fn(
+            hash_info.hash(
                 normalize_log_line(
                     [
                         SCID_PLACEHOLDER,
@@ -222,9 +220,10 @@ class DocumentState:
             # new update keys must match old hashes
             check_hashes = set(old_params.get("nextKeyHashes") or [])
             new_keys = params.get("updateKeys") or []
-            hash_fn = get_hash_fn(old_params)
+            hash_info = prev_state.get_hash_info()
             expect_hashes = set(
-                format_hash(hash_fn(new_key.encode("utf-8"))) for new_key in new_keys
+                format_hash(hash_info.hash(new_key.encode("utf-8")))
+                for new_key in new_keys
             )
             if expect_hashes != check_hashes:
                 raise ValueError(
@@ -345,11 +344,6 @@ class DocumentState:
             if param == "deactivated":
                 if pvalue not in (None, True, False):
                     raise ValueError("Unsupported value for 'deactivated' parameter")
-            elif param == "hash":
-                if pvalue is not None and pvalue not in HASH_FN_MAP:
-                    raise ValueError(
-                        f"Unsupported value for 'hash' parameter: {pvalue!r}"
-                    )
             elif param == "method":
                 if not isinstance(pvalue, str) or not pvalue:
                     raise ValueError(

@@ -8,21 +8,20 @@ from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Tuple, Optional, Union
 
 import aries_askar
 import jsoncanon
 
 from did_history.did import SCID_PLACEHOLDER
-from did_history.format import format_hash
-from did_history.state import DocumentState, get_hash_fn
+from did_history.format import HashInfo, format_hash
+from did_history.state import DocumentState
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
 from .history import load_history_path, write_document_state
 from .proof import (
     AskarSigningKey,
     VerifyingKey,
-    check_document_id_format,
     di_jcs_sign,
 )
 
@@ -37,7 +36,8 @@ async def auto_provision_did(
     key_alg: str,
     pass_key: str,
     *,
-    extra_params: dict = None,
+    extra_params: Optional[dict] = None,
+    hash_name: Optional[str] = None,
 ) -> Tuple[Path, DocumentState, AskarSigningKey]:
     update_key = AskarSigningKey.generate(key_alg)
     placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
@@ -46,13 +46,13 @@ async def auto_provision_did(
     params["updateKeys"] = [update_key.multikey]
     if params.get("prerotation"):
         next_key = AskarSigningKey.generate(key_alg)
-        hash_fn = get_hash_fn(params)
-        next_key_hash = format_hash(hash_fn(next_key.multikey.encode("utf-8")))
+        hash_info = HashInfo.from_name(hash_name or "sha2-256")
+        next_key_hash = format_hash(hash_info.hash(next_key.multikey.encode("utf-8")))
         params["nextKeyHashes"] = [next_key_hash]
     else:
         next_key = None
         next_key_hash = None
-    state = provision_did(genesis, params=params)
+    state = provision_did(genesis, params=params, hash_name=hash_name)
     doc_id = state.document_id
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
@@ -122,8 +122,9 @@ def genesis_document(placeholder_id: str) -> dict:
 def provision_did(
     document: Union[str, dict],
     *,
-    params: dict = None,
-    timestamp: datetime = None,
+    params: Optional[dict] = None,
+    timestamp: Optional[datetime] = None,
+    hash_name: Optional[str] = None,
 ) -> DocumentState:
     if not params:
         params = {}
@@ -131,18 +132,9 @@ def provision_did(
     if "method" in params and params["method"] != method:
         raise ValueError("Cannot override 'method' parameter")
     params["method"] = method
-    return DocumentState.initial(params=params, document=document, timestamp=timestamp)
-
-
-def normalize_placeholder_id(domain_path: str) -> str:
-    if domain_path.startswith("did:"):
-        placeholder_id = domain_path
-    else:
-        placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
-    check_document_id_format(
-        placeholder_id.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__"
+    return DocumentState.initial(
+        params=params, document=document, timestamp=timestamp, hash_name=hash_name
     )
-    return placeholder_id
 
 
 if __name__ == "__main__":
@@ -160,25 +152,20 @@ if __name__ == "__main__":
         "--hash", help="the name of the hash function (default sha-256)"
     )
     parser.add_argument(
-        "domain-path", help="the domain name and optional path components"
+        "domain_path", help="the domain name and optional path components"
     )
     args = parser.parse_args()
 
     if not args.auto:
         raise SystemExit("Only automatic provisioning (--auto) is currently supported")
 
-    placeholder_id = normalize_placeholder_id(args.domain_path)
-    params = {}
-    if args.hash:
-        params["hash"] = args.hash
-
     try:
         doc_dir, state, _ = asyncio.run(
             auto_provision_did(
-                placeholder_id,
+                args.domain_path,
                 args.algorithm or "ed25519",
                 "password",
-                params=params,
+                hash_name=args.hash,
             )
         )
     except ValueError as err:

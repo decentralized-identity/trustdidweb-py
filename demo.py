@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from sys import argv
 from time import perf_counter
+from typing import Optional
 
 import aries_askar
 
@@ -56,9 +57,10 @@ def log_document_state(doc_dir: Path, state: DocumentState):
 async def demo(
     domain: str,
     *,
-    key_alg: str = None,
-    params: dict = None,
+    key_alg: Optional[str] = None,
+    params: Optional[dict] = None,
     perf_check: bool = False,
+    hash_name: Optional[str] = None,
 ):
     pass_key = "password"
     key_alg = key_alg or "ed25519"
@@ -67,6 +69,7 @@ async def demo(
         key_alg,
         pass_key=pass_key,
         extra_params=params,
+        hash_name=hash_name,
     )
     print(f"Provisioned DID: {state.document_id}")
     log_document_state(doc_dir, state)
@@ -194,6 +197,4 @@ if __name__ == "__main__":
         domain = argv[1]
     else:
         domain = "domain.example"
-    asyncio.run(
-        demo(domain, key_alg="p384", params={"hash": "sha3-256", "prerotation": True})
-    )
+    asyncio.run(demo(domain, key_alg="p384", params={"prerotation": True}))

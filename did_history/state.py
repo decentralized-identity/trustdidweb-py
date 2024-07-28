@@ -22,7 +22,6 @@ HASH_FN_MAP: dict[str, HashFn] = {
     "sha256": lambda b: sha256(b).digest(),
     "sha3-256": lambda b: sha3_256(b).digest(),
 }
-MIN_SCID_LENGTH: int = 28
 
 
 def get_hash_fn(params: dict) -> HashFn:
@@ -39,7 +38,8 @@ def get_hash_fn(params: dict) -> HashFn:
 class DocumentMetadata:
     created: datetime
     updated: datetime
-    version_id: int
+    version_id: str
+    version_number: int
     deactivated: bool = False
 
     def serialize(self) -> dict:
@@ -47,7 +47,8 @@ class DocumentMetadata:
             "created": format_datetime(self.created),
             "updated": format_datetime(self.updated),
             "deactivated": self.deactivated,
-            "versionId": str(self.version_id),
+            "versionId": self.version_id,
+            "versionNumber": self.version_number,
         }
 
 
@@ -59,9 +60,9 @@ class DocumentState:
     document_update: dict
     timestamp: datetime
     timestamp_raw: str
-    version_id: int
-    version_hash: str
-    last_version_hash: str
+    version_id: str
+    version_number: int
+    last_version_id: str
     proofs: list[dict]
 
     @classmethod
@@ -70,10 +71,7 @@ class DocumentState:
         params: dict,
         document: Union[str, dict],
         timestamp: Optional[Union[str, datetime]] = None,
-        scid_length: int = None,
     ):
-        if scid_length is None:
-            scid_length = MIN_SCID_LENGTH
         timestamp, timestamp_raw = make_timestamp(timestamp)
 
         if isinstance(document, str):
@@ -94,41 +92,37 @@ class DocumentState:
             params_update=params.copy(),
             document=document,
             document_update={"value": deepcopy(document)},
+            last_version_id=SCID_PLACEHOLDER,
             timestamp=timestamp,
             timestamp_raw=timestamp_raw,
-            version_id=1,
-            version_hash="",
-            last_version_hash=SCID_PLACEHOLDER,
+            version_id="",
+            version_number=0,
             proofs=[],
         )
-        genesis_hash = genesis.generate_version_hash()
+        scid = genesis.generate_entry_hash()
 
-        if scid_length < MIN_SCID_LENGTH or scid_length > len(genesis_hash):
-            raise ValueError(f"Invalid SCID length: {scid_length}")
-
-        scid = genesis_hash[:scid_length]
         doc_v1 = json.loads(document_str.replace(SCID_PLACEHOLDER, scid))
 
         genesis.params["scid"] = scid
         genesis.params_update["scid"] = scid
         genesis.document = doc_v1
         genesis.document_update = {"value": deepcopy(doc_v1)}
-        genesis.last_version_hash = scid
-        genesis.version_hash = genesis.generate_version_hash()
+        genesis.last_version_id = scid
+        genesis.version_id = "1-" + genesis.generate_entry_hash()
+        genesis.version_number = 1
 
         # ensure consistency
         genesis.check_scid_derivation()
 
         return genesis
 
-    def generate_version_hash(self) -> str:
+    def generate_entry_hash(self) -> str:
         hash_fn = get_hash_fn(self.params)
         return format_hash(
             hash_fn(
                 normalize_log_line(
                     [
-                        self.last_version_hash,
-                        self.version_id,
+                        self.last_version_id,
                         self.timestamp_raw,
                         self.params_update,
                         self.document_update,
@@ -137,22 +131,21 @@ class DocumentState:
             )
         )
 
-    def check_version_hash(self):
-        if self.generate_version_hash() != self.version_hash:
-            raise ValueError("Invalid version hash")
+    def check_version_id(self):
+        entry_hash = self.generate_entry_hash()
+        if self.version_id != f"{self.version_number}-{entry_hash}":
+            raise ValueError("Invalid version ID")
 
     def generate_next_key_hash(self, multikey: str) -> str:
         hash_fn = get_hash_fn(self.params)
         return format_hash(hash_fn(multikey.encode("utf-8")))
 
     def check_scid_derivation(self):
-        if self.version_id != 1:
-            raise ValueError("Expected versionId to be 1")
+        if self.version_number != 1:
+            raise ValueError("Expected version number to be 1")
         scid = self.params.get("scid")
-        if not scid or len(scid) < MIN_SCID_LENGTH:
-            raise ValueError("Invalid SCID length")
-        if self.last_version_hash != scid:
-            raise ValueError("Parameter 'scid' must match last version hash")
+        if self.last_version_id != scid:
+            raise ValueError("Parameter 'scid' must match last version ID")
         genesis_doc = json.loads(
             json.dumps(self.document).replace(scid, SCID_PLACEHOLDER)
         )
@@ -164,7 +157,6 @@ class DocumentState:
                 normalize_log_line(
                     [
                         SCID_PLACEHOLDER,
-                        self.version_id,
                         self.timestamp_raw,
                         {**self.params, "scid": SCID_PLACEHOLDER},
                         {"value": genesis_doc},
@@ -172,14 +164,14 @@ class DocumentState:
                 )
             )
         )
-        if not genesis_hash.startswith(scid):
+        if genesis_hash != scid:
             raise ValueError("Invalid SCID derivation")
 
     def create_next(
         self,
-        document_update: dict,
-        params_update: dict = None,
-        timestamp: Union[str, datetime] = None,
+        document_update: Optional[dict],
+        params_update: Optional[dict] = None,
+        timestamp: Union[str, datetime, None] = None,
     ) -> "DocumentState":
         params = self.params.copy()
         if params_update:
@@ -200,23 +192,22 @@ class DocumentState:
             document_update=doc_update,
             timestamp=timestamp,
             timestamp_raw=timestamp_raw,
-            version_id=self.version_id + 1,
-            last_version_hash=self.version_hash,
-            version_hash="",
+            last_version_id=self.version_id,
+            version_id="",
+            version_number=self.version_number + 1,
             proofs=[],
         )
-        ret.version_hash = ret.generate_version_hash()
+        entry_hash = ret.generate_entry_hash()
+        ret.version_id = f"{ret.version_number}-{entry_hash}"
         return ret
 
     @classmethod
     def load_history_line(
         cls, parts: list[str], prev_state: Optional["DocumentState"]
     ) -> "DocumentState":
-        if not isinstance(parts, list) or len(parts) != 6:
+        if not isinstance(parts, list) or len(parts) != 5:
             raise ValueError("Cannot parse history")
-        (version_hash, version_id, timestamp_raw, params_update, doc_update, proofs) = (
-            parts
-        )
+        (version_id, timestamp_raw, params_update, doc_update, proofs) = parts
         if not isinstance(params_update, dict):
             raise ValueError("Invalid history parameters")
         if not isinstance(doc_update, dict) or not ("value" in doc_update) ^ (
@@ -241,9 +232,13 @@ class DocumentState:
                     "with 'nextKeyHashes' parameter"
                 )
 
-        check_ver = prev_state.version_id + 1 if prev_state else 1
-        if check_ver != version_id:
-            raise ValueError("VersionId mismatch")
+        try:
+            version_number = int(version_id.split("-")[0])
+        except ValueError as e:
+            raise ValueError("Invalid versionId") from e
+        check_ver = prev_state.version_number + 1 if prev_state else 1
+        if check_ver != version_number:
+            raise ValueError("Version number mismatch")
 
         if "value" in doc_update:
             document = doc_update["value"]
@@ -257,9 +252,9 @@ class DocumentState:
             raise ValueError("Invalid document state")
 
         if prev_state:
-            last_version_hash = prev_state.version_hash
+            last_version_id = prev_state.version_id
         else:
-            last_version_hash = params["scid"]
+            last_version_id = params["scid"]
 
         timestamp, timestamp_raw = make_timestamp(timestamp_raw)
 
@@ -275,9 +270,9 @@ class DocumentState:
             document_update=doc_update,
             timestamp_raw=timestamp_raw,
             timestamp=timestamp,
+            last_version_id=last_version_id,
             version_id=version_id,
-            last_version_hash=last_version_hash,
-            version_hash=version_hash,
+            version_number=version_number,
             proofs=proofs,
         )
         if not prev_state:
@@ -286,7 +281,6 @@ class DocumentState:
 
     def history_line(self) -> list:
         return [
-            self.version_hash,
             self.version_id,
             self.timestamp_raw,
             self.params_update,
@@ -353,11 +347,14 @@ class DocumentState:
                     raise ValueError("Unsupported value for 'deactivated' parameter")
             elif param == "hash":
                 if pvalue is not None and pvalue not in HASH_FN_MAP:
-                    raise ValueError(f"Unsupported 'hash' parameter: {pvalue!r}")
+                    raise ValueError(
+                        f"Unsupported value for 'hash' parameter: {pvalue!r}"
+                    )
             elif param == "method":
-                # FIXME - more flexible validation for method parameter?
-                if pvalue != "did:tdw:1":
-                    raise ValueError(f"Unsupported 'method' parameter: {pvalue!r}")
+                if not isinstance(pvalue, str) or not pvalue:
+                    raise ValueError(
+                        f"Unsupported value for 'method' parameter: {pvalue!r}"
+                    )
             elif param == "moved":
                 if not isinstance(pvalue, str) or not pvalue:
                     raise ValueError(

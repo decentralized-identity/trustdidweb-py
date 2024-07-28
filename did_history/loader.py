@@ -34,6 +34,7 @@ async def load_history(
         updated=latest.timestamp,
         deactivated=latest.deactivated,
         version_id=latest.version_id,
+        version_number=latest.version_number,
     )
 
 
@@ -68,7 +69,7 @@ async def iter_history(
         if state:
             if state.version_id == version_id or not next_state:
                 done = True
-            state.check_version_hash()
+            state.check_version_id()
             if verify_state:
                 verify_state(state, prev_state, done)
             yield state

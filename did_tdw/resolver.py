@@ -81,9 +81,9 @@ def find_service(document: dict, name: str) -> Optional[dict]:
 async def resolve_did(
     did: Union[DIDUrl, str],
     *,
-    local_history: Path = None,
-    version_id: Union[int, str] = None,
-    version_time: Union[datetime, str] = None,
+    local_history: Optional[Path] = None,
+    version_id: Union[int, str, None] = None,
+    version_time: Union[datetime, str, None] = None,
     add_implicit: bool = True,
 ) -> ResolutionResult:
     if isinstance(did, str):
@@ -163,7 +163,7 @@ async def resolve_relative_ref(
             )
 
 
-async def resolve(didurl: str, *, local_history: Path = None) -> dict:
+async def resolve(didurl: str, *, local_history: Optional[Path] = None) -> dict:
     try:
         didurl = DIDUrl.decode(args.didurl)
     except ValueError as err:

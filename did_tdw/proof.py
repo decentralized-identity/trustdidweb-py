@@ -12,7 +12,7 @@ from did_history.key import MultiKey
 from did_history.state import DocumentState
 from multiformats import multibase
 
-from .const import METHOD_NAME
+from .const import METHOD_NAME, METHOD_VERSION
 
 DI_SUPPORTED = [
     {
@@ -109,7 +109,7 @@ def di_jcs_sign(
         state.document,
         sk,
         purpose="authentication",
-        challenge=state.version_hash,
+        challenge=state.version_id,
         timestamp=timestamp,
         kid=kid,
     )
@@ -188,18 +188,19 @@ def check_document_id_format(doc_id: str, scid: str):
         raise ValueError("Document identifier must be a DID")
     if url.method != METHOD_NAME:
         raise ValueError(f"Expected DID method to be '{METHOD_NAME}'")
-    domain, *path = url.identifier.split(":")
+    check_scid, *path = url.identifier.split(":")
+    if check_scid != scid:
+        raise ValueError("SCID must be the first component of the method-specific ID")
+    if not path:
+        raise ValueError("Missing domain from method-specific ID")
+    domain, *path = path
+    check_valid_domain(domain)
+
+
+def check_valid_domain(domain: str):
     domain = domain.split(".")
-    dom_c = domain.count(scid)
-    path_c = path.count(scid)
-    if dom_c + path_c != 1:
-        raise ValueError("SCID must occur exactly once in document id")
-    if dom_c and scid in domain[-2:]:
-        raise ValueError("SCID must be a subdomain when it occurs in the domain name")
-
-
-def verify_document_id(state: DocumentState, _prev_state: DocumentState = None):
-    check_document_id_format(state.document_id, state.params["scid"])
+    if len(domain) < 2 or not all(len(s) >= 2 and s[:1].isalpha() for s in domain):
+        raise ValueError("Invalid domain name in method-specific ID")
 
 
 def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: bool):
@@ -240,8 +241,15 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: boo
         )
 
 
-def verify_all(state: DocumentState, prev_state: DocumentState, is_final: bool):
+def verify_params(state: DocumentState, prev_state: DocumentState, is_final: bool):
     check_document_id_format(state.document_id, state.params["scid"])
+    method = state.params.get("method")
+    if method != f"did:{METHOD_NAME}:{METHOD_VERSION}":
+        raise ValueError(f"Unexpected value for method parameter: {method}")
+
+
+def verify_all(state: DocumentState, prev_state: DocumentState, is_final: bool):
     # FIXME add resolution context instead of is_final flag?
+    verify_params(state, prev_state, is_final)
     if state.version_id == 1 or state.is_auth_event or is_final:
         verify_proofs(state, prev_state, is_final)

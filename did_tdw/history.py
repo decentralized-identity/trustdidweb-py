@@ -10,7 +10,7 @@ from did_history.loader import load_history
 from did_history.state import DocumentMetadata, DocumentState
 
 from .const import HISTORY_FILENAME
-from .proof import SigningKey, di_jcs_sign, verify_document_id, verify_all
+from .proof import SigningKey, di_jcs_sign, verify_params, verify_all
 
 
 def write_document_state(
@@ -18,7 +18,7 @@ def write_document_state(
     state: DocumentState,
 ):
     history_path = doc_dir.joinpath(HISTORY_FILENAME)
-    if state.version_id > 1:
+    if state.version_number > 1:
         mode = "a"
         if not history_path.exists():
             raise RuntimeError(f"History path does not exist: {history_path}")
@@ -39,7 +39,7 @@ async def load_history_path(
     version_time: datetime = None,
     verify_proofs: bool = True,
 ) -> Tuple[DocumentState, DocumentMetadata]:
-    verify_state = verify_all if verify_proofs else verify_document_id
+    verify_state = verify_all if verify_proofs else verify_params
     async with aiofiles.open(path, "r") as history:
         return await load_history(
             history,

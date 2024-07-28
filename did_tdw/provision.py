@@ -17,9 +17,14 @@ from did_history.did import SCID_PLACEHOLDER
 from did_history.format import format_hash
 from did_history.state import DocumentState, get_hash_fn
 
-from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME
+from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
 from .history import load_history_path, write_document_state
-from .proof import AskarSigningKey, VerifyingKey, check_document_id_format, di_jcs_sign
+from .proof import (
+    AskarSigningKey,
+    VerifyingKey,
+    check_document_id_format,
+    di_jcs_sign,
+)
 
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
@@ -28,14 +33,14 @@ DOMAIN_PATTERN = re.compile(r"^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
 
 
 async def auto_provision_did(
-    placeholder_id: str,
+    domain_path: str,
     key_alg: str,
     pass_key: str,
     *,
     extra_params: dict = None,
-    scid_length: int = None,
 ) -> Tuple[Path, DocumentState, AskarSigningKey]:
     update_key = AskarSigningKey.generate(key_alg)
+    placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
     genesis = genesis_document(placeholder_id)
     params = deepcopy(extra_params) if extra_params else {}
     params["updateKeys"] = [update_key.multikey]
@@ -47,7 +52,7 @@ async def auto_provision_did(
     else:
         next_key = None
         next_key_hash = None
-    state = provision_did(genesis, params=params, scid_length=scid_length)
+    state = provision_did(genesis, params=params)
     doc_id = state.document_id
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
@@ -119,33 +124,25 @@ def provision_did(
     *,
     params: dict = None,
     timestamp: datetime = None,
-    scid_length: int = None,
 ) -> DocumentState:
     if not params:
         params = {}
-    method = f"did:{METHOD_NAME}:1"
+    method = f"did:{METHOD_NAME}:{METHOD_VERSION}"
     if "method" in params and params["method"] != method:
         raise ValueError("Cannot override 'method' parameter")
     params["method"] = method
-    return DocumentState.initial(
-        params=params, document=document, timestamp=timestamp, scid_length=scid_length
-    )
+    return DocumentState.initial(params=params, document=document, timestamp=timestamp)
 
 
-def normalize_provision_id(domain_or_did: str) -> str:
-    if SCID_PLACEHOLDER not in domain_or_did:
-        # must be a domain
-        if ":" in domain_or_did:
-            raise ValueError("Missing SCID placeholder in DID")
-        if not DOMAIN_PATTERN.match(domain_or_did):
-            raise ValueError(f"Invalid domain name: {domain_or_did}")
-        return f"did:{METHOD_NAME}:{domain_or_did}:{SCID_PLACEHOLDER}"
-    if not domain_or_did.startswith("did:"):
-        domain_or_did = f"did:{METHOD_NAME}:{domain_or_did}"
+def normalize_placeholder_id(domain_path: str) -> str:
+    if domain_path.startswith("did:"):
+        placeholder_id = domain_path
+    else:
+        placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
     check_document_id_format(
-        domain_or_did.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__"
+        placeholder_id.replace(SCID_PLACEHOLDER, "__SCID__"), "__SCID__"
     )
-    return domain_or_did
+    return placeholder_id
 
 
 if __name__ == "__main__":
@@ -163,15 +160,14 @@ if __name__ == "__main__":
         "--hash", help="the name of the hash function (default sha-256)"
     )
     parser.add_argument(
-        "--length", type=int, help="the length of the SCID (default 28)"
+        "domain-path", help="the domain name and optional path components"
     )
-    parser.add_argument("did", help="the domain name or DID to provision")
     args = parser.parse_args()
 
     if not args.auto:
         raise SystemExit("Only automatic provisioning (--auto) is currently supported")
 
-    placeholder_id = normalize_provision_id(args.did)
+    placeholder_id = normalize_placeholder_id(args.domain_path)
     params = {}
     if args.hash:
         params["hash"] = args.hash
@@ -183,7 +179,6 @@ if __name__ == "__main__":
                 args.algorithm or "ed25519",
                 "password",
                 params=params,
-                scid_length=args.length,
             )
         )
     except ValueError as err:

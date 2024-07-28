@@ -8,7 +8,6 @@ from time import perf_counter
 
 import aries_askar
 
-from did_history.did import SCID_PLACEHOLDER
 from did_history.date_utils import make_timestamp
 from did_history.state import DocumentState
 from did_tdw.const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
@@ -59,17 +58,15 @@ async def demo(
     *,
     key_alg: str = None,
     params: dict = None,
-    scid_length: int = None,
     perf_check: bool = False,
 ):
     pass_key = "password"
     key_alg = key_alg or "ed25519"
     (doc_dir, state, genesis_key) = await auto_provision_did(
-        f"did:tdw:{domain}:{SCID_PLACEHOLDER}",
+        domain,
         key_alg,
         pass_key=pass_key,
         extra_params=params,
-        scid_length=scid_length,
     )
     print(f"Provisioned DID: {state.document_id}")
     log_document_state(doc_dir, state)
@@ -102,7 +99,7 @@ async def demo(
         state = update_document_state(state, genesis_key, params_update=params_update)
         write_document_state(doc_dir, state)
         log_document_state(doc_dir, state)
-        print(f"Wrote document v{state.version_id}")
+        print(f"Wrote version {state.version_id}")
     else:
         update_key = genesis_key
 
@@ -136,7 +133,7 @@ async def demo(
     state = update_document_state(state, update_key, document_update=doc)
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
-    print(f"Wrote document v{state.version_id}")
+    print(f"Wrote version {state.version_id}")
 
     await store.close()
 
@@ -148,9 +145,9 @@ async def demo(
     assert meta.updated == state.timestamp
     assert meta.deactivated is False
     if state.prerotation:
-        assert meta.version_id == 3
+        assert meta.version_number == 3
     else:
-        assert meta.version_id == 2
+        assert meta.version_number == 2
 
     # output did configuration
     did_conf = create_did_configuration(

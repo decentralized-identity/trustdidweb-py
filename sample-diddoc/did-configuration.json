@@ -6,23 +6,23 @@
         "https://www.w3.org/ns/credentials/v2",
         "https://identity.foundation/.well-known/did-configuration/v1"
       ],
-      "issuer": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
-      "validFrom": "2024-06-18T19:25:56Z",
+      "issuer": "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example",
+      "validFrom": "2024-07-29T16:55:46Z",
       "type": [
         "VerifiableCredential",
         "DomainLinkageCredential"
       ],
       "credentialSubject": {
-        "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
+        "id": "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example",
         "origin": "https://domain.example"
       },
       "proof": {
         "type": "DataIntegrityProof",
         "cryptosuite": "ecdsa-jcs-2019",
-        "verificationMethod": "did:key:z82LkqR25TU88tztBEiFydNf4fUPn8oWBANckcmuqgonz9TAbK9a7WGQ5dm7jyqyRMpaRAe#z82LkqR25TU88tztBEiFydNf4fUPn8oWBANckcmuqgonz9TAbK9a7WGQ5dm7jyqyRMpaRAe",
-        "created": "2024-06-18T19:25:56Z",
+        "verificationMethod": "did:key:z82LkyHVbin99Vy2mK7cAQs2qiMEsT2ozJbYTSscjvEJ6n7vDkhcfWCQ3NELhvovWMNhomF#z82LkyHVbin99Vy2mK7cAQs2qiMEsT2ozJbYTSscjvEJ6n7vDkhcfWCQ3NELhvovWMNhomF",
+        "created": "2024-07-29T16:55:46Z",
         "proofPurpose": "assertionMethod",
-        "proofValue": "z2WCL2iMvxBtcmgGyEZK7D1WznHo83o5i5QrBeVdxs7nMRkhKWmQT2Jmn9NCbjWorj2PZBtpMrioVyDzFx7McdaZMEWpNhqkTZTAdqqPiSFpds2LYeZA5CLCs7M29u7Tzc6Wr"
+        "proofValue": "ztsz7p9qFZqmPpgVW2eSnPYvo4bWptfGyFHjxy3cFzehHm9Bsa2PfJRKJtkhuG8wDncBEau4apgphYEBk4VmtCSFiGBFeuBvRWDo2ypdDon79wZrZJ7HTKLuCFKaJ5Ha7abV"
       }
     }
   ]

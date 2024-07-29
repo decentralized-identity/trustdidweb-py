@@ -5,21 +5,21 @@
     "https://identity.foundation/.well-known/did-configuration/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw",
+  "id": "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example",
   "authentication": [
-    "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#z6MknVQ1dPZwBYRsXRtgxF82D5Sz79CCFRNLFwuy5jNo2iou"
+    "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example#z6MktXCkQR3XxG2vud5jydQnBpGk7ZyLpKZ6i1HDB1XsmkY2"
   ],
   "assertionMethod": [
-    "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#z6MknVQ1dPZwBYRsXRtgxF82D5Sz79CCFRNLFwuy5jNo2iou"
+    "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example#z6MktXCkQR3XxG2vud5jydQnBpGk7ZyLpKZ6i1HDB1XsmkY2"
   ],
   "service": [
     {
-      "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#domain",
+      "id": "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example#domain",
       "type": "LinkedDomains",
       "serviceEndpoint": "https://domain.example"
     },
     {
-      "id": "did:tdw:domain.example:lkq33irvim6iktjkagnw2ee6bgcw#whois",
+      "id": "did:tdw:QmfYXZvvScGJsR7HAQWFSmkJfJcTbZMponZumjPK6B9zMD:domain.example#whois",
       "type": "LinkedVerifiablePresentation",
       "serviceEndpoint": "https://domain.example/.well-known/whois.jsonld"
     }

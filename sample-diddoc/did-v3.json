@@ -5,23 +5,23 @@
     "https://identity.foundation/.well-known/did-configuration/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example",
+  "id": "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example",
   "authentication": [
-    "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example#z6MkktYAZaJxK1tbAGvubTWjtxyS6LLYs6vsPycUWhWetAw5"
+    "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example#z6Mkq57k27wL26zrxpvGVdEsCKe5kfpJhzy7GciVUfmosTdv"
   ],
   "assertionMethod": [
-    "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example#z6MkktYAZaJxK1tbAGvubTWjtxyS6LLYs6vsPycUWhWetAw5"
+    "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example#z6Mkq57k27wL26zrxpvGVdEsCKe5kfpJhzy7GciVUfmosTdv"
   ],
   "service": [
     {
-      "id": "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example#domain",
+      "id": "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example#domain",
       "type": "LinkedDomains",
       "serviceEndpoint": "https://domain.example"
     },
     {
-      "id": "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example#whois",
+      "id": "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example#whois",
       "type": "LinkedVerifiablePresentation",
-      "serviceEndpoint": "https://domain.example/.well-known/whois.jsonld"
+      "serviceEndpoint": "https://domain.example/.well-known/whois.vc"
     }
   ]
 }

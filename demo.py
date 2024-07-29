@@ -130,7 +130,7 @@ async def demo(
         {
             "id": doc["id"] + "#whois",
             "type": "LinkedVerifiablePresentation",
-            "serviceEndpoint": f"https://{domain}/.well-known/whois.jsonld",
+            "serviceEndpoint": f"https://{domain}/.well-known/whois.vc",
         },
     ]
     state = update_document_state(state, update_key, document_update=doc)

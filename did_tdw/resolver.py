@@ -66,7 +66,7 @@ def extend_document_services(document: dict, access_url: str):
                 "@context": "https://identity.foundation/linked-vp/contexts/v1",
                 "id": doc_id + "#whois",
                 "type": "LinkedVerifiablePresentation",
-                "serviceEndpoint": base_url + "whois.json",
+                "serviceEndpoint": base_url + "whois.vc",
             }
         )
 

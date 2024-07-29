@@ -6,23 +6,23 @@
         "https://www.w3.org/ns/credentials/v2",
         "https://identity.foundation/.well-known/did-configuration/v1"
       ],
-      "issuer": "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example",
-      "validFrom": "2024-07-29T16:58:08Z",
+      "issuer": "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example",
+      "validFrom": "2024-07-29T17:00:28Z",
       "type": [
         "VerifiableCredential",
         "DomainLinkageCredential"
       ],
       "credentialSubject": {
-        "id": "did:tdw:QmZ8mE55d1YvHspTBV1nJeiuwXYkpkLEonstVHD9BFCAbH:domain.example",
+        "id": "did:tdw:Qma6mc1qZw3NqxwX6SB5GPQYzP4pGN2nXD15Jwi4bcDBKu:domain.example",
         "origin": "https://domain.example"
       },
       "proof": {
         "type": "DataIntegrityProof",
         "cryptosuite": "ecdsa-jcs-2019",
-        "verificationMethod": "did:key:z82LkmsJPNLFZAA8Coa7YjFYSCdaWyALLRTVHGrixCkh4CmgmRXZARRU9cC2QTbsJzjHzdc#z82LkmsJPNLFZAA8Coa7YjFYSCdaWyALLRTVHGrixCkh4CmgmRXZARRU9cC2QTbsJzjHzdc",
-        "created": "2024-07-29T16:58:08Z",
+        "verificationMethod": "did:key:z82LkvR3CBNkb9tUVps4GhGpNvEVP6vWzdwgGwQbA1iYoZwd7m1F1hSvkJFSe6sWci7JiXc#z82LkvR3CBNkb9tUVps4GhGpNvEVP6vWzdwgGwQbA1iYoZwd7m1F1hSvkJFSe6sWci7JiXc",
+        "created": "2024-07-29T17:00:28Z",
         "proofPurpose": "assertionMethod",
-        "proofValue": "z2A6N599APsAPtkKBbbc3FCwgV51iBzNJMJYk7i1FTD2cSFuCEMUJDmtK6t8vRbZPz6jjnqhJqyJGaF1AeqL4vPfpRpXF6cqPMidsZHf3LU1Do1y4GYqbmrjSt8Y66tJwfLB1"
+        "proofValue": "zhyh1guwqmKPr5pSNX4giv7ejawJ7zG64QrK43GjUogEPceYCj1e9QBa4ySUjb1G7nEd9FJH2NXxEN4zB3p33YgsGKrZ6D38APiaid7yejYX2UXqPFz4RPVBmpVdbmXyyWbu"
       }
     }
   ]

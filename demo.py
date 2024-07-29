@@ -50,7 +50,7 @@ def create_did_configuration(
 
 def log_document_state(doc_dir: Path, state: DocumentState):
     pretty = json.dumps(state.document, indent=2)
-    with open(doc_dir.joinpath(f"did-v{state.version_id}.json"), "w") as out:
+    with open(doc_dir.joinpath(f"did-v{state.version_number}.json"), "w") as out:
         print(pretty, file=out)
 
 

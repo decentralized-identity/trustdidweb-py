@@ -26,7 +26,7 @@ from .proof import verify_all
 
 
 def did_history_url(didurl: DIDUrl) -> str:
-    id_parts = didurl.identifier.split(":")
+    id_parts = didurl.identifier.split(":")[1:]
     if didurl.method != METHOD_NAME or not id_parts or "" in id_parts:
         raise ValueError("Invalid DID")
     host = urllib.parse.unquote(id_parts[0])

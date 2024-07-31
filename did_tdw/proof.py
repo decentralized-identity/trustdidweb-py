@@ -103,7 +103,11 @@ class AskarSigningKey(SigningKey):
 
 
 def di_jcs_sign(
-    state: DocumentState, sk: SigningKey, *, timestamp: datetime = None, kid: str = None
+    state: DocumentState,
+    sk: SigningKey,
+    *,
+    timestamp: Optional[datetime] = None,
+    kid: Optional[str] = None,
 ) -> dict:
     return di_jcs_sign_raw(
         state.document,
@@ -120,9 +124,9 @@ def di_jcs_sign_raw(
     sk: SigningKey,
     purpose: str,
     *,
-    challenge: str = None,
-    timestamp: datetime = None,
-    kid: str = None,
+    challenge: Optional[str] = None,
+    timestamp: Optional[datetime] = None,
+    kid: Optional[str] = None,
 ) -> dict:
     alg = sk.algorithm
     suite = None
@@ -133,7 +137,9 @@ def di_jcs_sign_raw(
     if kid is None:
         if not sk.kid:
             raise ValueError("Missing key ID for signing")
-        kid = f"did:key:{sk.kid}#{sk.kid}"
+        kid = sk.kid
+        if not kid.startswith("did:"):
+            kid = f"did:key:{kid}#{kid}"
     if not suite:
         raise ValueError(f"Unsupported key algorithm: {alg}")
     proof = {

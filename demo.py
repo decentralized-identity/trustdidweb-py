@@ -20,6 +20,7 @@ from did_tdw.history import (
 from did_tdw.proof import AskarSigningKey, SigningKey, di_jcs_sign_raw
 from did_tdw.provision import (
     auto_provision_did,
+    encode_verification_method,
 )
 
 
@@ -121,6 +122,7 @@ async def demo(
     )
     doc["authentication"] = [auth_key.kid]
     doc["assertionMethod"] = [auth_key.kid]
+    doc["verificationMethod"] = [encode_verification_method(auth_key)]
     doc["service"] = [
         {
             "id": doc["id"] + "#domain",
@@ -156,7 +158,7 @@ async def demo(
     did_conf = create_did_configuration(
         doc["id"],
         f"https://{domain}",
-        genesis_key,
+        auth_key,
     )
     with open(doc_dir.joinpath("did-configuration.json"), "w") as outdc:
         print(json.dumps(did_conf, indent=2), file=outdc)
@@ -197,4 +199,4 @@ if __name__ == "__main__":
         domain = argv[1]
     else:
         domain = "domain.example"
-    asyncio.run(demo(domain, key_alg="p384", params={"prerotation": True}))
+    asyncio.run(demo(domain, key_alg="ed25519", params={"prerotation": True}))

@@ -116,6 +116,7 @@ async def demo(
     doc = state.document_copy()
     doc["@context"].extend(
         [
+            "https://w3id.org/security/multikey/v1",
             "https://identity.foundation/.well-known/did-configuration/v1",
             "https://identity.foundation/linked-vp/contexts/v1",
         ]

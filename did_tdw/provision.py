@@ -27,7 +27,6 @@ from .proof import (
 
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
-MKEY_CONTEXT = "https://w3id.org/security/multikey/v1"
 DOMAIN_PATTERN = re.compile(r"^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
 
 
@@ -114,7 +113,7 @@ def genesis_document(placeholder_id: str) -> dict:
     """
     # FIXME check format of placeholder ID
     return {
-        "@context": [DID_CONTEXT, MKEY_CONTEXT],
+        "@context": [DID_CONTEXT],
         "id": placeholder_id,
     }
 

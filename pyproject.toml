@@ -18,11 +18,12 @@ aiohttp = "^3.10.5"
 aries-askar = "^0.3.2"
 base58="~2.1.0"
 jsoncanon = "^0.2.3"
+jsonpatch = "^1.33"
 multiformats = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
-ruff = "0.6.2"
+ruff = "^0.6.2"
 
 [tool.ruff]
 lint.ignore = ["D","E203","E701"]

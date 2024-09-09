@@ -53,6 +53,12 @@ async def auto_provision_did(
         next_key_hash = None
     state = provision_did(genesis, params=params, hash_name=hash_name)
     doc_id = state.document_id
+    # Check for percent-encoded domain name
+    domain = doc_id.split(":")[-1]
+    if "%3A" in domain:
+        domain = domain.replace("%3A", ":")
+        doc_id = doc_id.rsplit(":", 1)[0] + ":" + domain
+
     doc_dir = Path(doc_id)
     doc_dir.mkdir(exist_ok=False)
 

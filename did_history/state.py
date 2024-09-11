@@ -167,7 +167,7 @@ class DocumentState:
 
     def create_next(
         self,
-        document_update: Optional[dict],
+        document_update: Optional[dict] = None,
         params_update: Optional[dict] = None,
         timestamp: Union[str, datetime, None] = None,
     ) -> "DocumentState":

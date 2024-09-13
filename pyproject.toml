@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "did-tdw"
+version = "0.1.0"
+description = "This repository includes Python libraries for working with `did:tdw` (Trust DID Web) DID documents and the underlying log format."
+authors = []
+license = "Apache-2.0"
+readme = "README.md"
+packages = [
+    { include = "did_tdw" },
+    { include = "did_history" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+aiofiles = "^24.1.0"
+aiohttp = "^3.10.5"
+aries-askar = "^0.3.2"
+base58="~2.1.0"
+jsoncanon = "^0.2.3"
+jsonpatch = "^1.33"
+multiformats = "^0.3.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+ruff = "^0.6.2"
+
+[tool.ruff]
+lint.ignore = ["D","E203","E701"]
+
+line-length = 90
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["D103","D104"]
+"test_*.py" = ["D"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

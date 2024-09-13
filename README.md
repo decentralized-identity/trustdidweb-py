@@ -4,10 +4,10 @@ This repository includes Python libraries for working with `did:tdw` (Trust DID 
 
 ## Prerequisites
 
-This library requires Python 3.10 or later. Dependencies are listed in requirements.txt and can be installed via:
+This library requires Python 3.10 or later. Dependencies are listed in pyproject.toml and can be installed via:
 
 ```sh
-pip3 install -r requirements.txt
+poetry install
 ```
 
 ## Usage

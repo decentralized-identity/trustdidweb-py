@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/trustdidweb-py
+      url: https://pypi.org/project/did-tdw/
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -20,7 +20,7 @@ jobs:
           python-version: "3.12"
       - name: Run Tests
         uses: ./.github/actions/unit-tests
-        with :
+        with:
           with-coverage: false
       - name: Install build and publish dependencies
         run: |

@@ -2,7 +2,7 @@ import json
 
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import aiofiles
 
@@ -52,12 +52,12 @@ async def load_history_path(
 def update_document_state(
     prev_state: DocumentState,
     update_key: SigningKey,
-    document_update: dict = None,
-    params_update: dict = None,
-    timestamp: Union[str, datetime] = None,
+    document: Optional[dict] = None,
+    params_update: Optional[dict] = None,
+    timestamp: Union[str, datetime, None] = None,
 ) -> DocumentState:
     state = prev_state.create_next(
-        document_update=document_update,
+        document=document,
         params_update=params_update,
         timestamp=timestamp,
     )

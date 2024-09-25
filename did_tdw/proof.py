@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256, sha384
 from typing import Optional
@@ -110,17 +111,16 @@ def di_jcs_sign(
     kid: Optional[str] = None,
 ) -> dict:
     return di_jcs_sign_raw(
-        state.document,
+        state.history_line(),
         sk,
         purpose="authentication",
-        challenge=state.version_id,
         timestamp=timestamp,
         kid=kid,
     )
 
 
 def di_jcs_sign_raw(
-    document: dict,
+    proof_input: dict,
     sk: SigningKey,
     purpose: str,
     *,
@@ -142,7 +142,7 @@ def di_jcs_sign_raw(
             kid = f"did:key:{kid}#{kid}"
     if not suite:
         raise ValueError(f"Unsupported key algorithm: {alg}")
-    proof = {
+    options = {
         "type": "DataIntegrityProof",
         "cryptosuite": suite["cryptosuite"],
         "verificationMethod": kid,
@@ -150,16 +150,20 @@ def di_jcs_sign_raw(
         "proofPurpose": purpose,
     }
     if challenge:
-        proof["challenge"] = challenge
+        options["challenge"] = challenge
     hash_fn = suite["hash"]
-    data_hash = hash_fn(jsoncanon.canonicalize(document)).digest()
-    options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
+    data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
+    options_hash = hash_fn(jsoncanon.canonicalize(options)).digest()
     sig_input = data_hash + options_hash
-    proof["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
-    return proof
+    options["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
+    return options
 
 
 def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
+    return di_jcs_verify_raw(state.history_line(), proof, method)
+
+
+def di_jcs_verify_raw(proof_input: dict, proof: dict, method: dict):
     if proof.get("type") != "DataIntegrityProof":
         raise ValueError("Unsupported proof type")
     if proof.get("proofPurpose") != "authentication":
@@ -179,13 +183,20 @@ def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
         raise ValueError(f"Unsupported cryptosuite for proof: {suite_name}/{codec}")
     key = aries_askar.Key.from_public_bytes(suite["algorithm"], key_bytes)
     hash_fn = suite["hash"]
-    data_hash = hash_fn(jsoncanon.canonicalize(state.document)).digest()
+    data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
     proof = proof.copy()
     signature = multibase.decode(proof.pop("proofValue"))
     options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
     if not key.verify_signature(sig_input, signature):
         raise ValueError("Invalid signature for proof")
+
+
+def di_jcs_canonicalize_input(proof_input: dict) -> bytes:
+    proof_input = deepcopy(proof_input)
+    if "proof" in proof_input:
+        del proof_input["proof"]
+    return jsoncanon.canonicalize(proof_input)
 
 
 def check_document_id_format(doc_id: str, scid: str):

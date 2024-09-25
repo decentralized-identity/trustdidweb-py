@@ -5,15 +5,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Union
 
-import jsonpatch
-
 from .did import SCID_PLACEHOLDER
 from .date_utils import format_datetime, make_timestamp
 from .format import (
     HashInfo,
     format_hash,
     identify_hash,
-    normalize_log_line,
+    canonicalize_log_line,
 )
 
 
@@ -43,7 +41,6 @@ class DocumentState:
     params: dict
     params_update: dict
     document: dict
-    document_update: dict
     timestamp: datetime
     timestamp_raw: str
     version_id: str
@@ -78,7 +75,6 @@ class DocumentState:
             params=params,
             params_update=params.copy(),
             document=document,
-            document_update={"value": deepcopy(document)},
             last_version_id=SCID_PLACEHOLDER,
             timestamp=timestamp,
             timestamp_raw=timestamp_raw,
@@ -95,7 +91,6 @@ class DocumentState:
         genesis.params["scid"] = scid
         genesis.params_update["scid"] = scid
         genesis.document = doc_v1
-        genesis.document_update = {"value": deepcopy(doc_v1)}
         genesis.last_version_id = genesis.version_id
         genesis.version_id = "1-" + genesis.generate_entry_hash(hash_info)
         genesis.version_number = genesis.version_number + 1
@@ -108,18 +103,10 @@ class DocumentState:
     def generate_entry_hash(self, hash_info: Optional[HashInfo] = None) -> str:
         if not hash_info:
             hash_info = self.get_hash_info()
-        return format_hash(
-            hash_info.hash(
-                normalize_log_line(
-                    [
-                        self.last_version_id,
-                        self.timestamp_raw,
-                        self.params_update,
-                        self.document_update,
-                    ]
-                )
-            )
-        )
+        line = self.history_line()
+        line["versionId"] = self.last_version_id
+        del line["proof"]
+        return format_hash(hash_info.hash(canonicalize_log_line(line)))
 
     def get_hash_info(self) -> HashInfo:
         if self.version_id:
@@ -152,22 +139,22 @@ class DocumentState:
         hash_info = self.get_hash_info()
         genesis_hash = format_hash(
             hash_info.hash(
-                normalize_log_line(
-                    [
-                        SCID_PLACEHOLDER,
-                        self.timestamp_raw,
-                        {**self.params, "scid": SCID_PLACEHOLDER},
-                        {"value": genesis_doc},
-                    ]
+                canonicalize_log_line(
+                    {
+                        "versionId": SCID_PLACEHOLDER,
+                        "timestamp": self.timestamp_raw,
+                        "parameters": {**self.params, "scid": SCID_PLACEHOLDER},
+                        "state": genesis_doc,
+                    }
                 )
             )
         )
         if genesis_hash != scid:
-            raise ValueError("Invalid SCID derivation")
+            raise ValueError(f"Invalid SCID derivation, expected: {genesis_hash}")
 
     def create_next(
         self,
-        document_update: Optional[dict] = None,
+        document: Optional[dict] = None,
         params_update: Optional[dict] = None,
         timestamp: Union[str, datetime, None] = None,
     ) -> "DocumentState":
@@ -177,17 +164,14 @@ class DocumentState:
         else:
             params_update = {}
         timestamp, timestamp_raw = make_timestamp(timestamp)
-        if document_update is None:
+        if document is None:
             document = deepcopy(self.document)
-            doc_update = {"value": deepcopy(document)}
         else:
-            document = deepcopy(document_update)
-            doc_update = {"patch": jsonpatch.make_patch(self.document, document).patch}
+            document = deepcopy(document)
         ret = DocumentState(
             params=params,
             params_update=params_update,
             document=document,
-            document_update=doc_update,
             timestamp=timestamp,
             timestamp_raw=timestamp_raw,
             last_version_id=self.version_id,
@@ -203,16 +187,60 @@ class DocumentState:
     def load_history_line(
         cls, parts: list[str], prev_state: Optional["DocumentState"]
     ) -> "DocumentState":
-        if not isinstance(parts, list) or len(parts) != 5:
-            raise ValueError("Cannot parse history")
-        (version_id, timestamp_raw, params_update, doc_update, proofs) = parts
-        if not isinstance(params_update, dict):
-            raise ValueError("Invalid history parameters")
-        if not isinstance(doc_update, dict) or not ("value" in doc_update) ^ (
-            "patch" in doc_update
-        ):
-            # FIXME allow an empty document update?
-            raise ValueError("Invalid history data")
+        version_id: str
+        version_number: int
+        document: dict
+        params_update: dict
+        timestamp: datetime
+        timestamp_raw: str
+        proofs: list
+
+        missing = {"versionId", "timestamp", "parameters", "state", "proof"}
+
+        if not isinstance(parts, dict):
+            raise ValueError("Expected object")
+        for k, v in parts.items():
+            if k == "versionId":
+                if not isinstance(v, str):
+                    raise ValueError("Expected string: versionId")
+                version_id = v
+                try:
+                    version_number = int(v.split("-")[0])
+                except ValueError as e:
+                    raise ValueError("Invalid versionId") from e
+                check_ver = prev_state.version_number + 1 if prev_state else 1
+                if check_ver != version_number:
+                    raise ValueError("Version number mismatch")
+
+            elif k == "timestamp":
+                if not isinstance(v, str):
+                    raise ValueError("Expected string: timestamp")
+                timestamp, timestamp_raw = make_timestamp(v)
+
+            elif k == "parameters":
+                if not isinstance(v, dict):
+                    raise ValueError("Expected object: parameters")
+                params_update = deepcopy(v)
+
+            elif k == "state":
+                if not isinstance(v, dict):
+                    raise ValueError("Expected object: state")
+                if not v.get("id"):
+                    raise ValueError("Invalid document state: missing 'id'")
+                document = deepcopy(v)
+
+            elif k == "proof":
+                if not isinstance(v, list):
+                    raise ValueError("Expected list: proof")
+                proofs = deepcopy(v)
+
+            else:
+                raise ValueError(f"Unexpected property: '{k}'")
+
+            missing.remove(k)
+
+        if missing:
+            raise ValueError("Missing: " + (", ".join(missing)))
 
         old_params = prev_state.params if prev_state else {}
         params = cls._update_params(old_params, params_update)
@@ -231,31 +259,10 @@ class DocumentState:
                     "with 'nextKeyHashes' parameter"
                 )
 
-        try:
-            version_number = int(version_id.split("-")[0])
-        except ValueError as e:
-            raise ValueError("Invalid versionId") from e
-        check_ver = prev_state.version_number + 1 if prev_state else 1
-        if check_ver != version_number:
-            raise ValueError("Version number mismatch")
-
-        if "value" in doc_update:
-            document = doc_update["value"]
-        else:
-            if not prev_state:
-                raise ValueError("Invalid initial data")
-            # FIXME wrap error
-            document = jsonpatch.apply_patch(prev_state.document, doc_update["patch"])
-
-        if not isinstance(document, dict) or "id" not in document:
-            raise ValueError("Invalid document state")
-
         if prev_state:
             last_version_id = prev_state.version_id
         else:
             last_version_id = params["scid"]
-
-        timestamp, timestamp_raw = make_timestamp(timestamp_raw)
 
         if not isinstance(proofs, list) or any(
             not isinstance(prf, dict) for prf in proofs
@@ -263,29 +270,28 @@ class DocumentState:
             raise ValueError("Invalid proofs")
 
         state = DocumentState(
+            version_id=version_id,
+            version_number=version_number,
+            timestamp_raw=timestamp_raw,
+            timestamp=timestamp,
             params=params,
             params_update=params_update,
             document=document,
-            document_update=doc_update,
-            timestamp_raw=timestamp_raw,
-            timestamp=timestamp,
-            last_version_id=last_version_id,
-            version_id=version_id,
-            version_number=version_number,
             proofs=proofs,
+            last_version_id=last_version_id,
         )
         if not prev_state:
             state.check_scid_derivation()
         return state
 
-    def history_line(self) -> list:
-        return [
-            self.version_id,
-            self.timestamp_raw,
-            self.params_update,
-            self.document_update,
-            self.proofs,
-        ]
+    def history_line(self) -> dict:
+        return {
+            "versionId": self.version_id,
+            "timestamp": self.timestamp_raw,
+            "parameters": self.params_update,
+            "state": self.document,
+            "proof": self.proofs,
+        }
 
     @property
     def document_id(self) -> str:

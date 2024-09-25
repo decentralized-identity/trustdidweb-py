@@ -3,9 +3,10 @@ import asyncio
 import json
 import urllib.parse
 
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import AsyncIterator, Awaitable, Callable, Optional, Union
 
 import aiofiles
 import aiohttp
@@ -85,6 +86,7 @@ async def resolve_did(
     version_id: Union[int, str, None] = None,
     version_time: Union[datetime, str, None] = None,
     add_implicit: bool = True,
+    resolve_url: Optional[Callable[[str], Awaitable[AsyncIterator[str]]]] = None,
 ) -> ResolutionResult:
     if isinstance(did, str):
         didurl = DIDUrl.decode(did)
@@ -92,34 +94,24 @@ async def resolve_did(
         didurl = did
     url = did_history_url(didurl)
     if local_history:
-        # FIXME catch read errors
-        async with aiofiles.open(local_history, "r") as history:
+        fetch_history = aiofiles.open(local_history, "r")
+    else:
+        fetch_history = (resolve_url or _resolve_url)(url)
+    try:
+        async with fetch_history as content:
             result = await resolve_history(
                 didurl.did,
-                history,
+                content,
                 version_id=version_id,
                 version_time=version_time,
                 verify_state=verify_all,
             )
-    else:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as req:
-                    req.raise_for_status()
-                    result = await resolve_history(
-                        didurl.did,
-                        req.content,
-                        version_id=version_id,
-                        version_time=version_time,
-                        verify_state=verify_all,
-                    )
-        except aiohttp.ClientError as err:
-            return ResolutionResult(
-                resolution_metadata=ResolutionError(
-                    "notFound", f"Error fetching DID history: {str(err)}"
-                ).serialize()
-            )
-
+    except ValueError as err:
+        return ResolutionResult(
+            resolution_metadata=ResolutionError(
+                "notFound", f"Error fetching DID history: {str(err)}"
+            ).serialize()
+        )
     if result.document and add_implicit:
         extend_document_services(result.document, url)
     return result
@@ -197,6 +189,17 @@ async def resolve(didurl: str, *, local_history: Optional[Path] = None) -> dict:
     # FIXME relative_ref + fragment combination?
 
     return result.serialize()
+
+
+@asynccontextmanager
+async def _resolve_url(url: str) -> AsyncIterator[str]:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as req:
+                req.raise_for_status()
+                return req.content
+    except aiohttp.ClientError as err:
+        raise ValueError(str(err))
 
 
 if __name__ == "__main__":

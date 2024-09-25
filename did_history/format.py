@@ -36,5 +36,5 @@ def identify_hash(mhash: str) -> HashInfo:
     return HashInfo.from_name(codec.name)
 
 
-def normalize_log_line(line: list) -> bytes:
+def canonicalize_log_line(line: dict) -> bytes:
     return jsoncanon.canonicalize(line)

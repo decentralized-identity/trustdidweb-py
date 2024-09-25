@@ -136,7 +136,7 @@ async def demo(
             "serviceEndpoint": f"https://{domain}/.well-known/whois.vc",
         },
     ]
-    state = update_document_state(state, update_key, document_update=doc)
+    state = update_document_state(state, update_key, document=doc)
     write_document_state(doc_dir, state)
     log_document_state(doc_dir, state)
     print(f"Wrote version {state.version_id}")
@@ -170,7 +170,7 @@ async def demo(
         start = perf_counter()
         for i in range(1000):
             doc["etc"] = i
-            state = update_document_state(state, update_key, document_update=doc)
+            state = update_document_state(state, update_key, document=doc)
             write_document_state(doc_dir, state)
         dur = perf_counter() - start
         print(f"Update duration: {dur:0.2f}")

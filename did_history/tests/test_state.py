@@ -171,17 +171,17 @@ def test_create_next():
 def test_load_history_line():
     valid_line = {
         "versionId": "1-QmX9fVx3xDJVRY15c2zMvjQN7nKPp4hQsazbbDSGxMwRHG",
-        "timestamp": "2024-09-10T18:29:27Z",
+        "versionTime": "2024-09-10T18:29:27Z",
         "parameters": {
             "prerotation": True,
             "updateKeys": ["z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3"],
             "nextKeyHashes": ["QmTnBEPaARViW8ikCA875H8TR21biFPg9rqijdyZG5tzLw"],
             "method": "did:tdw:0.3",
-            "scid": "QmUebWVbPirhQSTzKJdDwT9L7o9Fa4Lk5oG5inVidWmeoc",
+            "scid": "QmVHduNq3ncp42Q7sS2Zo7EeiamEsdYnyUiipRaWK4Aw95",
         },
         "state": {
             "@context": ["https://www.w3.org/ns/did/v1"],
-            "id": "did:tdw:QmUebWVbPirhQSTzKJdDwT9L7o9Fa4Lk5oG5inVidWmeoc:domain.example",
+            "id": "did:tdw:QmVHduNq3ncp42Q7sS2Zo7EeiamEsdYnyUiipRaWK4Aw95:domain.example",
         },
         "proof": [
             {
@@ -190,7 +190,6 @@ def test_load_history_line():
                 "verificationMethod": "did:key:z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3#z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3",
                 "created": "2024-09-10T18:29:27Z",
                 "proofPurpose": "authentication",
-                "challenge": "1-QmX9fVx3xDJVRY15c2zMvjQN7nKPp4hQsazbbDSGxMwRHG",
                 "proofValue": "z4ykWbMWsaLz5QtazW6i6v7ax1T99mvkbMKKf33rPbummsuEnZoDa1puQbTfAiVxe6NdWAyjytyMnmi3gQbJAaCvW",
             }
         ],
@@ -226,17 +225,17 @@ def test_load_history_line_with_prev_state():
     prev_state = DocumentState.load_history_line(
         {
             "versionId": "1-QmX9fVx3xDJVRY15c2zMvjQN7nKPp4hQsazbbDSGxMwRHG",
-            "timestamp": "2024-09-10T18:29:27Z",
+            "versionTime": "2024-09-10T18:29:27Z",
             "parameters": {
                 "prerotation": True,
                 "updateKeys": ["z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3"],
                 "nextKeyHashes": ["QmTnBEPaARViW8ikCA875H8TR21biFPg9rqijdyZG5tzLw"],
                 "method": "did:tdw:0.3",
-                "scid": "QmUebWVbPirhQSTzKJdDwT9L7o9Fa4Lk5oG5inVidWmeoc",
+                "scid": "QmVHduNq3ncp42Q7sS2Zo7EeiamEsdYnyUiipRaWK4Aw95",
             },
             "state": {
                 "@context": ["https://www.w3.org/ns/did/v1"],
-                "id": "did:tdw:QmUebWVbPirhQSTzKJdDwT9L7o9Fa4Lk5oG5inVidWmeoc:domain.example",
+                "id": "did:tdw:QmVHduNq3ncp42Q7sS2Zo7EeiamEsdYnyUiipRaWK4Aw95:domain.example",
             },
             "proof": [
                 {
@@ -245,7 +244,6 @@ def test_load_history_line_with_prev_state():
                     "verificationMethod": "did:key:z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3#z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3",
                     "created": "2024-09-10T18:29:27Z",
                     "proofPurpose": "authentication",
-                    "challenge": "1-QmX9fVx3xDJVRY15c2zMvjQN7nKPp4hQsazbbDSGxMwRHG",
                     "proofValue": "z4ykWbMWsaLz5QtazW6i6v7ax1T99mvkbMKKf33rPbummsuEnZoDa1puQbTfAiVxe6NdWAyjytyMnmi3gQbJAaCvW",
                 }
             ],
@@ -256,14 +254,14 @@ def test_load_history_line_with_prev_state():
     DocumentState.load_history_line(
         {
             "versionId": "2-QmVRDqG6kCetD54LEcSomsDm7uCpsHbQkdqk7V5J58aV33",
-            "timestamp": "2024-09-10T18:29:28Z",
+            "versionTime": "2024-09-10T18:29:28Z",
             "parameters": {
                 "updateKeys": ["z6MkoSd9jDGV2hyJCb9GiskBPBTY3o4eNs3K9Vr8tCD5Lpkh"],
                 "nextKeyHashes": ["QmdkSM2aqyk5Vfcqz4Bw6AKhp3WoFBSL85ydEqAan8UX8A"],
             },
             "state": {
                 "@context": ["https://www.w3.org/ns/did/v1"],
-                "id": "did:tdw:QmXwpXEc44Rw8A7u7okUvsg3HC69JAKV6b3wX4thyV7nYe:domain.example",
+                "id": "did:tdw:QmVHduNq3ncp42Q7sS2Zo7EeiamEsdYnyUiipRaWK4Aw95:domain.example",
             },
             "proof": [
                 {
@@ -272,7 +270,6 @@ def test_load_history_line_with_prev_state():
                     "verificationMethod": "did:key:z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3#z6Mkw1WDm8pd7vwdCBFPrX3VQHMeYcX2nnd9MNiwuHxaZPZ3",
                     "created": "2024-09-10T18:29:28Z",
                     "proofPurpose": "authentication",
-                    "challenge": "2-QmVRDqG6kCetD54LEcSomsDm7uCpsHbQkdqk7V5J58aV33",
                     "proofValue": "z3vmBNQrQME3R9Y1KgZZbmgpSwT4rwVUBVDwkfmzULADGRxosk2GqvVmGLVRmW8j2SV7zHN1UA97uc2pMM5x7X27N",
                 }
             ],

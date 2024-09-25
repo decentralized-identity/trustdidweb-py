@@ -85,9 +85,9 @@ def mock_document_state() -> DocumentState:
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-jcs-2022",
                 "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-                "created": "2024-09-25T21:19:01Z",
+                "created": "2024-09-25T22:31:56Z",
                 "proofPurpose": "authentication",
-                "proofValue": "z2bmMT2A7JGE8A9MKtEuLWq6TQfs4VZA5qTfixYtBMwJmyWysFU9BUgATsLL6HB6RFVqZSvHLBaPRjN6S9WVLeSfo",
+                "proofValue": "zsLjBrr4FMH9Sj54hkKMxqkTNNzUNrv8fEiw2VR95HoiPzLTGf4Mq62vqpRG7jeFQ6xuj44oEeHP8GDXKfmCCnFY",
             }
         ],
     )
@@ -176,9 +176,9 @@ def test_di_jcs_verify(mock_document_state, mock_sk):
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-        "created": "2024-09-25T21:19:01Z",
+        "created": "2024-09-25T22:31:04Z",
         "proofPurpose": "authentication",
-        "proofValue": "z2bmMT2A7JGE8A9MKtEuLWq6TQfs4VZA5qTfixYtBMwJmyWysFU9BUgATsLL6HB6RFVqZSvHLBaPRjN6S9WVLeSfo",
+        "proofValue": "z3g3iuNRQCWahJZgkzPRkoNZPUPFdKADofWH64wp5jjzjq4FxgyGFHfSE8pkoGug9JR8hdnxJ8gr1jN15Zrct7uBn",
     }
     method = {
         "type": "Multikey",
@@ -285,12 +285,13 @@ def test_verify_proofs(mock_document_state, mock_sk):
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-jcs-2022",
                 "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-                "created": "2024-09-25T21:26:38Z",
+                "created": "2024-09-25T22:32:36Z",
                 "proofPurpose": "authentication",
-                "proofValue": "zf2DVrNiVhAe6jpqbqzTKNJpZAG5e6gnJTnnCpx3EUVTDabAoYHMK3C4w4BScEystURiH8BNzkAQbQwPECVY2Pzr",
+                "proofValue": "z5DiJ2zKiuK6ehyE7rvMaBNLTW5yua8vJDJGkNqfk6nc1YN4AVMYeqSPRAWmo5dPU8Wk2wBHyEXHjcG6ZRjzRN5j5",
             }
         ],
     )
+
     verify_proofs(state=current_state, prev_state=prev_state, is_final=False)
 
     # Bad proof for current state

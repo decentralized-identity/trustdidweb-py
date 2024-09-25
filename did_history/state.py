@@ -142,7 +142,7 @@ class DocumentState:
                 canonicalize_log_line(
                     {
                         "versionId": SCID_PLACEHOLDER,
-                        "timestamp": self.timestamp_raw,
+                        "versionTime": self.timestamp_raw,
                         "parameters": {**self.params, "scid": SCID_PLACEHOLDER},
                         "state": genesis_doc,
                     }
@@ -195,7 +195,7 @@ class DocumentState:
         timestamp_raw: str
         proofs: list
 
-        missing = {"versionId", "timestamp", "parameters", "state", "proof"}
+        missing = {"versionId", "versionTime", "parameters", "state", "proof"}
 
         if not isinstance(parts, dict):
             raise ValueError("Expected object")
@@ -212,9 +212,9 @@ class DocumentState:
                 if check_ver != version_number:
                     raise ValueError("Version number mismatch")
 
-            elif k == "timestamp":
+            elif k == "versionTime":
                 if not isinstance(v, str):
-                    raise ValueError("Expected string: timestamp")
+                    raise ValueError("Expected string: versionTime")
                 timestamp, timestamp_raw = make_timestamp(v)
 
             elif k == "parameters":
@@ -287,7 +287,7 @@ class DocumentState:
     def history_line(self) -> dict:
         return {
             "versionId": self.version_id,
-            "timestamp": self.timestamp_raw,
+            "versionTime": self.timestamp_raw,
             "parameters": self.params_update,
             "state": self.document,
             "proof": self.proofs,

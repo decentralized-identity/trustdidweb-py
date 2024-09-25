@@ -5,29 +5,29 @@
     "https://identity.foundation/.well-known/did-configuration/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example",
+  "id": "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example",
   "authentication": [
-    "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example#z6Mkh38Z6ncMD8oz3ceYLVMnP31X6vhkKdZnVro4AWR13tyP"
+    "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example#z6MkqRiu6KLZGkwpTAeocWyGSZheYYRjtmYKbpfEnsyy2mYN"
   ],
   "assertionMethod": [
-    "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example#z6Mkh38Z6ncMD8oz3ceYLVMnP31X6vhkKdZnVro4AWR13tyP"
+    "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example#z6MkqRiu6KLZGkwpTAeocWyGSZheYYRjtmYKbpfEnsyy2mYN"
   ],
   "verificationMethod": [
     {
-      "id": "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example#z6Mkh38Z6ncMD8oz3ceYLVMnP31X6vhkKdZnVro4AWR13tyP",
-      "controller": "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example",
+      "id": "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example#z6MkqRiu6KLZGkwpTAeocWyGSZheYYRjtmYKbpfEnsyy2mYN",
+      "controller": "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example",
       "type": "Multikey",
-      "publicKeyMultibase": "z6Mkh38Z6ncMD8oz3ceYLVMnP31X6vhkKdZnVro4AWR13tyP"
+      "publicKeyMultibase": "z6MkqRiu6KLZGkwpTAeocWyGSZheYYRjtmYKbpfEnsyy2mYN"
     }
   ],
   "service": [
     {
-      "id": "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example#domain",
+      "id": "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example#domain",
       "type": "LinkedDomains",
       "serviceEndpoint": "https://domain.example"
     },
     {
-      "id": "did:tdw:Qmeo9HwUcBUEQSmE7PJihnAWC1SxqSnKq7yZtTzFGyMz4X:domain.example#whois",
+      "id": "did:tdw:QmbAXKe36czBtyQqnm2Apnr6HYtng78tsJnvjdyoaieY7H:domain.example#whois",
       "type": "LinkedVerifiablePresentation",
       "serviceEndpoint": "https://domain.example/.well-known/whois.vc"
     }

@@ -6,23 +6,23 @@
         "https://www.w3.org/ns/credentials/v2",
         "https://identity.foundation/.well-known/did-configuration/v1"
       ],
-      "issuer": "did:tdw:QmPP1j1jivFaEk2ir2GnFcmKqmZ9s9cLfQ7f6SLxbpqxup:domain.example",
-      "validFrom": "2024-09-26T22:49:43Z",
+      "issuer": "did:tdw:QmfGEUAcMpzo25kF2Rhn8L5FAXysfGnkzjwdKoNPi615XQ:domain.example",
+      "validFrom": "2024-09-26T23:22:26Z",
       "type": [
         "VerifiableCredential",
         "DomainLinkageCredential"
       ],
       "credentialSubject": {
-        "id": "did:tdw:QmPP1j1jivFaEk2ir2GnFcmKqmZ9s9cLfQ7f6SLxbpqxup:domain.example",
+        "id": "did:tdw:QmfGEUAcMpzo25kF2Rhn8L5FAXysfGnkzjwdKoNPi615XQ:domain.example",
         "origin": "https://domain.example"
       },
       "proof": {
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
-        "verificationMethod": "did:tdw:QmPP1j1jivFaEk2ir2GnFcmKqmZ9s9cLfQ7f6SLxbpqxup:domain.example#z6Mkh492dQaMeWpVjijhZ4gHE9E1jEp7BcwKurooQSPPZJ7X",
-        "created": "2024-09-26T22:49:43Z",
+        "verificationMethod": "did:tdw:QmfGEUAcMpzo25kF2Rhn8L5FAXysfGnkzjwdKoNPi615XQ:domain.example#z6MkrgET7ZLV32qNrr6vUd2kVXGw63vbPvqxDqqhRQpvngBX",
+        "created": "2024-09-26T23:22:26Z",
         "proofPurpose": "assertionMethod",
-        "proofValue": "zcdGDYEnUR9gycxLnCu7buHHhJw9W7TnaocA5pA2cu4kuYCKdm3TggdgokoxM88qMSHdGgGVFYbrAWFDJqcya15P"
+        "proofValue": "z66LBUUmGjJFay25WXR96MVbeJ1aJqmoHqXkEK1avLZ4BZS3gdp25yhALxFj1QD68EnWuopSZfCkXQo6sa3RC86xL"
       }
     }
   ]

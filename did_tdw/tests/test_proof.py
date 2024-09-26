@@ -61,14 +61,14 @@ def mock_document_state() -> DocumentState:
             "prerotation": True,
             "updateKeys": ["z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun"],
             "nextKeyHashes": ["Qmbj4wLBmB8rj48svucmeffwDTDyt33s61w1iupwHLUfcn"],
-            "method": "did:tdw:0.3",
+            "method": "did:tdw:0.4",
             "scid": "Qmdr1y71TPEv8kkxKJi5b7H3qTbEak3MXiqmsLrgMVjRj6",
         },
         params_update={
             "prerotation": True,
             "updateKeys": ["z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun"],
             "nextKeyHashes": ["Qmbj4wLBmB8rj48svucmeffwDTDyt33s61w1iupwHLUfcn"],
-            "method": "did:tdw:0.3",
+            "method": "did:tdw:0.4",
             "scid": "Qmdr1y71TPEv8kkxKJi5b7H3qTbEak3MXiqmsLrgMVjRj6",
         },
         document={
@@ -85,9 +85,9 @@ def mock_document_state() -> DocumentState:
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-jcs-2022",
                 "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-                "created": "2024-09-25T22:31:56Z",
+                "created": "2024-09-26T23:21:03Z",
                 "proofPurpose": "authentication",
-                "proofValue": "zsLjBrr4FMH9Sj54hkKMxqkTNNzUNrv8fEiw2VR95HoiPzLTGf4Mq62vqpRG7jeFQ6xuj44oEeHP8GDXKfmCCnFY",
+                "proofValue": "z24NwVw1qmt6D3duxkBhipCcmf72jyjqX31zzHX8A4LLy6w2crLBo1fWKWh5c1KLTWP7TmFwk1yDbbSQbZ7ra8DTd",
             }
         ],
     )
@@ -106,7 +106,7 @@ def test_jcs_sign_verify(mock_sk):
     mock_state = DocumentState.initial(
         params={
             "updateKeys": ["z6MkrPW2qVDWmgrGn7j7G6SRKSzzkLuujC8oV9wMUzSPQoL4"],
-            "method": "did:tdw:0.3",
+            "method": "did:tdw:0.4",
         },
         document={
             "@context": ["https://www.w3.org/ns/did/v1"],
@@ -176,9 +176,9 @@ def test_di_jcs_verify(mock_document_state, mock_sk):
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-        "created": "2024-09-25T22:31:04Z",
+        "created": "2024-09-26T23:21:03Z",
         "proofPurpose": "authentication",
-        "proofValue": "z3g3iuNRQCWahJZgkzPRkoNZPUPFdKADofWH64wp5jjzjq4FxgyGFHfSE8pkoGug9JR8hdnxJ8gr1jN15Zrct7uBn",
+        "proofValue": "z24NwVw1qmt6D3duxkBhipCcmf72jyjqX31zzHX8A4LLy6w2crLBo1fWKWh5c1KLTWP7TmFwk1yDbbSQbZ7ra8DTd",
     }
     method = {
         "type": "Multikey",
@@ -264,7 +264,7 @@ def test_verify_proofs(mock_document_state, mock_sk):
             "prerotation": True,
             "updateKeys": ["z6MkmTNGEZUFRkfKd5TKooEGfdMqdokphHarKSngiPvvJdGR"],
             "nextKeyHashes": ["QmPPNYiBqpc3gxRG4FrxbBrp3KC8V4pePJxqxgNwkQMpaR"],
-            "method": "did:tdw:0.3",
+            "method": "did:tdw:0.4",
             "scid": "Qmdr1y71TPEv8kkxKJi5b7H3qTbEak3MXiqmsLrgMVjRj6",
         },
         params_update={

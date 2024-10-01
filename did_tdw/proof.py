@@ -181,7 +181,10 @@ def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
     hash_fn = suite["hash"]
     data_hash = hash_fn(jsoncanon.canonicalize(state.document)).digest()
     proof = proof.copy()
-    signature = multibase.decode(proof.pop("proofValue"))
+    try:
+        signature = multibase.decode(proof.pop("proofValue"))
+    except (KeyError, ValueError):
+        raise ValueError("Invalid multibase signature")
     options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
     sig_input = data_hash + options_hash
     if not key.verify_signature(sig_input, signature):

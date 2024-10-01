@@ -19,6 +19,7 @@ jsonpatch = "^1.33"
 multiformats = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
+pydantic = "^2"
 pytest = "^8.3.2"
 pytest-asyncio = "^0.24.0"
 pytest-cov = "^5.0.0"

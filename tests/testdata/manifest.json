@@ -1,0 +1,66 @@
+[
+  {
+    "id": "tc001",
+    "type": ["CreationTest", "PositiveEvaluationTest"],
+    "purpose": "Create a new log",
+    "expect": "testdata/tc001-expect.jsonl",
+    "signingKey": {
+      "crv": "Ed25519",
+      "d": "J3l2VTBrN9GckzX8wt0p_FjJ8TDFdKWWNFM-MuHZWVE",
+      "kty": "OKP",
+      "x": "Bm-ZiwCZgDgv8K7xf3eGR77Z3vqItWhd0Np5PftRYvM"
+    },
+    "didDocument": {
+      "@context": ["https://www.w3.org/ns/did/v1"],
+      "id": "did:tdw:{SCID}:example.com"
+    },
+    "options": {
+      "signingTime": "2024-09-06T15:53:15+02:00"
+    }
+  },
+  {
+    "id": "tu001",
+    "type": ["UpdateTest", "PositiveEvaluationTest"],
+    "purpose": "Update a log with a service",
+    "input": "testdata/tu001-input.jsonl",
+    "expect": "testdata/tu001-expect.jsonl",
+    "signingKey": {
+      "crv": "Ed25519",
+      "d": "m4EusSPab7ZcfYbZcQbeoLzvZhS4tBp1sCz08qW7I_E",
+      "kty": "OKP",
+      "x": "ZtnR3mfJ6_xNrYpwgOX-vfJ_hWIAQvnV1AqDhKJnP24"
+    },
+    "didDocument": {
+      "@context": ["https://www.w3.org/ns/did/v1"],
+      "id": "did:tdw:QmdhbxVLQbjdb2UatyP19k6YsYLmUcgXhoZY2741vodGdG:example.com",
+      "service": [
+        {
+          "id": "did:tdw:QmdhbxVLQbjdb2UatyP19k6YsYLmUcgXhoZY2741vodGdG:example.com#service-1",
+          "type": "ExampleService",
+          "serviceEndpoint": "https://example.com/service/1"
+        }
+      ]
+    },
+    "options": {
+      "signingTime": "2024-09-06T15:53:15+02:00"
+    }
+  },
+  {
+    "id": "tv001",
+    "type": ["VerificationTest", "PositiveEvaluationTest"],
+    "purpose": "Verify a log",
+    "input": "testdata/tc001-expect.jsonl",
+    "options": {
+      "signingTime": "0001-01-01T00:00:00Z"
+    }
+  },
+  {
+    "id": "tv002",
+    "type": ["VerificationTest", "NegativeEvaluationTest"],
+    "purpose": "Verify a log with an invalid signature",
+    "input": "testdata/tv002-input.jsonl",
+    "options": {
+      "signingTime": "0001-01-01T00:00:00Z"
+    }
+  }
+]

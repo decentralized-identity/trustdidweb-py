@@ -85,9 +85,9 @@ def mock_document_state() -> DocumentState:
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-jcs-2022",
                 "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-                "created": "2024-09-26T23:21:03Z",
+                "created": "2024-10-01T22:11:25Z",
                 "proofPurpose": "authentication",
-                "proofValue": "z24NwVw1qmt6D3duxkBhipCcmf72jyjqX31zzHX8A4LLy6w2crLBo1fWKWh5c1KLTWP7TmFwk1yDbbSQbZ7ra8DTd",
+                "proofValue": "z3yw9vFuHgn2Z2CKf7KKbrZEYYV1y6jhUbCVpVQcMuCso9M7R6jPDuyTytKjmPA99UBFF9q3cyUZwaJZ5qaezpQC2",
             }
         ],
     )
@@ -176,9 +176,9 @@ def test_di_jcs_verify(mock_document_state, mock_sk):
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-jcs-2022",
         "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-        "created": "2024-09-26T23:21:03Z",
+        "created": "2024-10-01T22:11:25Z",
         "proofPurpose": "authentication",
-        "proofValue": "z24NwVw1qmt6D3duxkBhipCcmf72jyjqX31zzHX8A4LLy6w2crLBo1fWKWh5c1KLTWP7TmFwk1yDbbSQbZ7ra8DTd",
+        "proofValue": "z3yw9vFuHgn2Z2CKf7KKbrZEYYV1y6jhUbCVpVQcMuCso9M7R6jPDuyTytKjmPA99UBFF9q3cyUZwaJZ5qaezpQC2",
     }
     method = {
         "type": "Multikey",
@@ -285,9 +285,9 @@ def test_verify_proofs(mock_document_state, mock_sk):
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-jcs-2022",
                 "verificationMethod": "did:key:z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun#z6MkohYbQoXp3yHTcwnceL5uuSDukZu2NcP6uAAHANS6dJun",
-                "created": "2024-09-25T22:32:36Z",
+                "created": "2024-10-01T22:13:05Z",
                 "proofPurpose": "authentication",
-                "proofValue": "z5DiJ2zKiuK6ehyE7rvMaBNLTW5yua8vJDJGkNqfk6nc1YN4AVMYeqSPRAWmo5dPU8Wk2wBHyEXHjcG6ZRjzRN5j5",
+                "proofValue": "zjxnnS6LZ1CaCbzY3MjLnLM19T4eguw7Zq1LCrKZqjSx35snC8s9k1wr6W2E66r4zsKaDvMwBB7Rkiq5kjeMdEPu",
             }
         ],
     )

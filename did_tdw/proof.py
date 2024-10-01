@@ -154,7 +154,7 @@ def di_jcs_sign_raw(
     hash_fn = suite["hash"]
     data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
     options_hash = hash_fn(jsoncanon.canonicalize(options)).digest()
-    sig_input = data_hash + options_hash
+    sig_input = options_hash + data_hash
     options["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
     return options
 
@@ -187,7 +187,7 @@ def di_jcs_verify_raw(proof_input: dict, proof: dict, method: dict):
     proof = proof.copy()
     signature = multibase.decode(proof.pop("proofValue"))
     options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
-    sig_input = data_hash + options_hash
+    sig_input = options_hash + data_hash
     if not key.verify_signature(sig_input, signature):
         raise ValueError("Invalid signature for proof")
 

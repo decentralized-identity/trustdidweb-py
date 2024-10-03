@@ -3,7 +3,7 @@ from json import JSONDecodeError
 
 import pytest
 
-from did_history.format import HASH_FN_MAP, HashInfo
+from did_history.hash_utils import HashInfo
 from did_history.state import DocumentState
 
 
@@ -74,11 +74,11 @@ def test_generate_entry_hash():
         },
     )
 
-    generated_hash = doc_state.generate_entry_hash()
+    generated_hash = doc_state._generate_entry_hash()
     assert isinstance(generated_hash, str)
 
-    hash_info = HashInfo(HASH_FN_MAP["sha3-256"], name="test")
-    generated_hash = doc_state.generate_entry_hash(hash_info=hash_info)
+    hash_info = HashInfo.from_name("sha2-256")
+    generated_hash = doc_state._generate_entry_hash(hash_info=hash_info)
     assert isinstance(generated_hash, str)
 
 
@@ -128,30 +128,30 @@ def test_check_scid_derivation():
             "id": "did:tdw:{SCID}:domain.example\n",
         },
     )
-    doc_state.check_scid_derivation()
+    doc_state._check_scid_derivation()
 
     # version number equals 1
     doc_state.version_number = 2
     with pytest.raises(ValueError):
-        doc_state.check_scid_derivation()
+        doc_state._check_scid_derivation()
     doc_state.version_number = 1
-    doc_state.check_scid_derivation()
+    doc_state._check_scid_derivation()
 
     # version id must equal scid
     last_version_id = doc_state.last_version_id
     doc_state.last_version_id = "2-QmUuhGnfMoW8P5JCMWUJi4Ns3WkHsStj2ZEhzpMU7PV8QK"
     with pytest.raises(ValueError):
-        doc_state.check_scid_derivation()
+        doc_state._check_scid_derivation()
     doc_state.last_version_id = last_version_id
-    doc_state.check_scid_derivation()
+    doc_state._check_scid_derivation()
 
     # Wrong timestamp
     timestamp_raw = doc_state.timestamp_raw
     doc_state.timestamp_raw = "2023-09-10T18:15:05Z"
     with pytest.raises(ValueError):
-        doc_state.check_scid_derivation()
+        doc_state._check_scid_derivation()
     doc_state.timestamp_raw = timestamp_raw
-    doc_state.check_scid_derivation()
+    doc_state._check_scid_derivation()
 
 
 def test_create_next():

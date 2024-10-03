@@ -1,6 +1,7 @@
+"""Demo script for did:tdw generation and updating."""
+
 import asyncio
 import json
-
 from datetime import datetime
 from pathlib import Path
 from sys import argv
@@ -196,8 +197,5 @@ async def demo(
 
 
 if __name__ == "__main__":
-    if len(argv) > 1:
-        domain = argv[1]
-    else:
-        domain = "domain.example"
+    domain = argv[1] if len(argv) > 1 else "domain.example"
     asyncio.run(demo(domain, key_alg="ed25519", params={"prerotation": True}))

@@ -1,13 +1,12 @@
 from datetime import datetime, timezone
 
 import pytest
-
 from aries_askar import Key as AskarKey
 
 from did_history.state import DocumentState
 from did_tdw.proof import (
     AskarSigningKey,
-    check_document_id_format,
+    _check_document_id_format,
     di_jcs_sign,
     di_jcs_sign_raw,
     di_jcs_verify,
@@ -202,7 +201,7 @@ VALID_DID = [
 
 @pytest.mark.parametrize("did", VALID_DID)
 def test_valid_document_id(did: str):
-    check_document_id_format(did, "0000000000000000000000000000")
+    _check_document_id_format(did, "0000000000000000000000000000")
 
 
 INVALID_DID = [
@@ -227,29 +226,29 @@ INVALID_DID = [
 @pytest.mark.parametrize("did", INVALID_DID)
 def test_invalid_document_id(did: str):
     with pytest.raises(ValueError):
-        check_document_id_format(did, "0000000000000000000000000000")
+        _check_document_id_format(did, "0000000000000000000000000000")
 
 
 def test_check_document_id_format():
-    check_document_id_format(
+    _check_document_id_format(
         "did:tdw:QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4:example.com",
         "QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4",
     )
     # scid doesn't match
     with pytest.raises(ValueError):
-        check_document_id_format(
+        _check_document_id_format(
             "did:tdw:QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGY:example.com",
             "QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4",
         )
     # wrong did method (web)
     with pytest.raises(ValueError):
-        check_document_id_format(
+        _check_document_id_format(
             "did:web:QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4:example.com",
             "QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4",
         )
     # no path
     with pytest.raises(ValueError):
-        check_document_id_format(
+        _check_document_id_format(
             "did:web:QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4",
             "QmWtQu5Vwi5n7oTz1NHKPtRJuBQmNneLXBGkQW9YBaGYk4",
         )

@@ -1,6 +1,6 @@
 import pytest
 
-from did_history.key import MultiKey
+from did_history.multi_key import MultiKey
 
 
 def test_multi_key():
@@ -19,5 +19,5 @@ def test_multi_key():
 
     # Invalid codec
     codec_bad = "edd225"
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         MultiKey.from_public_key(codec_bad, pk)

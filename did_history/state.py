@@ -1,3 +1,5 @@
+"""DID history state handling."""
+
 import json
 
 from copy import deepcopy
@@ -5,14 +7,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Union
 
-from .did import SCID_PLACEHOLDER
-from .date_utils import format_datetime, make_timestamp
-from .format import (
-    HashInfo,
-    format_hash,
-    identify_hash,
-    canonicalize_log_line,
-)
+import jsoncanon
+
+from .did_url import SCID_PLACEHOLDER
+from .date_utils import iso_format_datetime, make_timestamp
+from .hash_utils import HashInfo
 
 
 AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
@@ -20,6 +19,8 @@ AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
 
 @dataclass
 class DocumentMetadata:
+    """Document resolution metadata."""
+
     created: datetime
     updated: datetime
     version_id: str
@@ -27,9 +28,10 @@ class DocumentMetadata:
     deactivated: bool = False
 
     def serialize(self) -> dict:
+        """Serialize this value to a JSON-compatible dictionary."""
         return {
-            "created": format_datetime(self.created),
-            "updated": format_datetime(self.updated),
+            "created": iso_format_datetime(self.created),
+            "updated": iso_format_datetime(self.updated),
             "deactivated": self.deactivated,
             "versionId": self.version_id,
             "versionNumber": self.version_number,
@@ -38,6 +40,8 @@ class DocumentMetadata:
 
 @dataclass
 class DocumentState:
+    """A state entry in a DID history log."""
+
     params: dict
     params_update: dict
     document: dict
@@ -56,6 +60,7 @@ class DocumentState:
         timestamp: Optional[Union[str, datetime]] = None,
         hash_name: Optional[str] = None,
     ):
+        """Create a new initial state for a DID (version 1)."""
         timestamp, timestamp_raw = make_timestamp(timestamp)
 
         if isinstance(document, str):
@@ -83,7 +88,7 @@ class DocumentState:
             proofs=[],
         )
         hash_info = HashInfo.from_name(hash_name or "sha2-256")
-        scid = genesis.generate_entry_hash(hash_info)
+        scid = genesis._generate_entry_hash(hash_info)
         genesis.version_id = scid
 
         doc_v1 = json.loads(document_str.replace(SCID_PLACEHOLDER, scid))
@@ -92,40 +97,48 @@ class DocumentState:
         genesis.params_update["scid"] = scid
         genesis.document = doc_v1
         genesis.last_version_id = genesis.version_id
-        genesis.version_id = "1-" + genesis.generate_entry_hash(hash_info)
+        genesis.version_id = "1-" + genesis._generate_entry_hash(hash_info)
         genesis.version_number = genesis.version_number + 1
 
         # ensure consistency
-        genesis.check_scid_derivation()
+        genesis._check_scid_derivation()
 
         return genesis
 
-    def generate_entry_hash(self, hash_info: Optional[HashInfo] = None) -> str:
+    def _generate_entry_hash(self, hash_info: Optional[HashInfo] = None) -> str:
         if not hash_info:
-            hash_info = self.get_hash_info()
+            hash_info = self._get_hash_info()
         line = self.history_line()
         line["versionId"] = self.last_version_id
         del line["proof"]
-        return format_hash(hash_info.hash(canonicalize_log_line(line)))
+        return hash_info.formatted_hash(_canonicalize_log_line(line))
 
-    def get_hash_info(self) -> HashInfo:
+    def _get_hash_info(self) -> HashInfo:
         if self.version_id:
             entry_hash = self.version_id.split("-", 1)[1]
         else:
             entry_hash = self.last_version_id.split("-", 1)[1]
-        info = identify_hash(entry_hash)
-        return info
+        return HashInfo.identify_hash(entry_hash)
 
     def check_version_id(self):
-        entry_hash = self.generate_entry_hash()
+        """Verify the versionId of this entry.
+
+        Checks that the value is consistent with the version number
+        and entry hash.
+        """
+        entry_hash = self._generate_entry_hash()
         if self.version_id != f"{self.version_number}-{entry_hash}":
             raise ValueError("Invalid version ID")
 
     def generate_next_key_hash(self, multikey: str) -> str:
-        info = self.get_hash_info()
-        return format_hash(info.hash(multikey.encode("utf-8")))
+        """Generate the hash value for an unrevealed multikey.
 
-    def check_scid_derivation(self):
+        This value may be added to the `nextKeyHashes` parameter.
+        """
+        hash_info = self._get_hash_info()
+        return hash_info.formatted_hash(multikey.encode("utf-8"))
+
+    def _check_scid_derivation(self):
         if self.version_number != 1:
             raise ValueError("Expected version number to be 1")
         scid = self.params.get("scid")
@@ -136,17 +149,15 @@ class DocumentState:
         )
         if genesis_doc == self.document:
             raise ValueError("SCID not found in document")
-        hash_info = self.get_hash_info()
-        genesis_hash = format_hash(
-            hash_info.hash(
-                canonicalize_log_line(
-                    {
-                        "versionId": SCID_PLACEHOLDER,
-                        "versionTime": self.timestamp_raw,
-                        "parameters": {**self.params, "scid": SCID_PLACEHOLDER},
-                        "state": genesis_doc,
-                    }
-                )
+        hash_info = self._get_hash_info()
+        genesis_hash = hash_info.formatted_hash(
+            _canonicalize_log_line(
+                {
+                    "versionId": SCID_PLACEHOLDER,
+                    "versionTime": self.timestamp_raw,
+                    "parameters": {**self.params, "scid": SCID_PLACEHOLDER},
+                    "state": genesis_doc,
+                }
             )
         )
         if genesis_hash != scid:
@@ -158,6 +169,7 @@ class DocumentState:
         params_update: Optional[dict] = None,
         timestamp: Union[str, datetime, None] = None,
     ) -> "DocumentState":
+        """Generate a successor document state from this state."""
         params = self.params.copy()
         if params_update:
             params.update(params_update)
@@ -179,7 +191,7 @@ class DocumentState:
             version_number=self.version_number + 1,
             proofs=[],
         )
-        entry_hash = ret.generate_entry_hash()
+        entry_hash = ret._generate_entry_hash()
         ret.version_id = f"{ret.version_number}-{entry_hash}"
         return ret
 
@@ -187,6 +199,7 @@ class DocumentState:
     def load_history_line(
         cls, parts: list[str], prev_state: Optional["DocumentState"]
     ) -> "DocumentState":
+        """Load a deserialized history line into a document state."""
         version_id: str
         version_number: int
         document: dict
@@ -248,9 +261,9 @@ class DocumentState:
             # new update keys must match old hashes
             check_hashes = set(old_params.get("nextKeyHashes") or [])
             new_keys = params.get("updateKeys") or []
-            hash_info = prev_state.get_hash_info()
+            hash_info = prev_state._get_hash_info()
             expect_hashes = set(
-                format_hash(hash_info.hash(new_key.encode("utf-8")))
+                hash_info.formatted_hash(new_key.encode("utf-8"))
                 for new_key in new_keys
             )
             if expect_hashes != check_hashes:
@@ -281,10 +294,11 @@ class DocumentState:
             last_version_id=last_version_id,
         )
         if not prev_state:
-            state.check_scid_derivation()
+            state._check_scid_derivation()
         return state
 
     def history_line(self) -> dict:
+        """Generate the serialized history line for this document state."""
         return {
             "versionId": self.version_id,
             "versionTime": self.timestamp_raw,
@@ -295,17 +309,21 @@ class DocumentState:
 
     @property
     def document_id(self) -> str:
+        """Fetch the identifier of the DID document."""
         return self.document.get("id")
 
     @property
     def deactivated(self) -> bool:
+        """Fetch the `deactivated` flag from the parameters."""
         return bool(self.params.get("deactivated"))
 
     def document_copy(self) -> dict:
+        """Fetch a copy of the DID document."""
         return deepcopy(self.document)
 
     @property
     def controllers(self) -> list[str]:
+        """Fetch a list of the controllers from the DID document."""
         ctls = self.document.get("controller")
         if ctls is None:
             ctls = [self.document_id]
@@ -317,14 +335,17 @@ class DocumentState:
 
     @property
     def is_auth_event(self) -> bool:
+        """Determine if this document state constitutes an authorization event."""
         return not AUTH_PARAMS.isdisjoint(self.params_update.keys())
 
     @property
     def prerotation(self) -> bool:
+        """Determine whether key prerotation is enabled for this document state."""
         return self.params.get("prerotation", False)
 
     @property
     def update_keys(self) -> list[str]:
+        """Fetch a list of the `updateKeys` entries from the parameters."""
         upd_keys = self.params.get("updateKeys")
         if upd_keys is not None and (
             not isinstance(upd_keys, list)
@@ -335,6 +356,7 @@ class DocumentState:
 
     @property
     def next_key_hashes(self) -> list[str]:
+        """Fetch a list of the `nextKeyHashes` entries from the parameters."""
         next_keys = self.params.get("nextKeyHashes")
         if next_keys is not None and (
             not isinstance(next_keys, list)
@@ -411,15 +433,5 @@ class DocumentState:
         return res
 
 
-def parse_verification_method(method: dict, doc_id: str, method_dict: dict) -> str:
-    if not isinstance(method, dict):
-        raise ValueError("invalid verification methods")
-    method_id = method.get("id")
-    if not isinstance(method_id, str):
-        raise ValueError("invalid verification method ID")
-    if method_id.startswith("#"):
-        method_id = doc_id + method_id
-    if method_id in method_dict:
-        raise ValueError("duplicate verification method ID")
-    method_dict[method_id] = method
-    return method_id
+def _canonicalize_log_line(line: dict) -> bytes:
+    return jsoncanon.canonicalize(line)

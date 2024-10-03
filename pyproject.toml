@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.10"
+
 [tool.poetry]
 name = "did-tdw"
 version = "0.1.0"
@@ -28,13 +31,27 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
 [tool.ruff]
-lint.ignore = ["D", "E203", "E701"]
-
+lint.select = [
+    "D",
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
 line-length = 90
+lint.ignore = ["D401", "EM102", "UP007"] #["E203", "E701"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["D103", "D104"]
-"test_*.py" = ["D"]
+"test_*.py" = ["D", "E501"]
 
 [build-system]
 requires = ["poetry-core"]

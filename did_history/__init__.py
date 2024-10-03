@@ -1,3 +1,5 @@
-from . import date_utils, format, loader, resolver, state
+"""DID log handling for did:tdw."""
 
-__all__ = ["date_utils", "format", "loader", "resolver", "state"]
+from . import date_utils, hash_utils, loader, resolver, state
+
+__all__ = ["date_utils", "hash_utils", "loader", "resolver", "state"]

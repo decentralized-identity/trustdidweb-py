@@ -1,20 +1,21 @@
+"""Provisioning of new did:tdw DIDs."""
+
 import argparse
 import asyncio
 import base64
 import json
 import re
-
 from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Tuple, Optional, Union
+from typing import Optional, Union
 
 import aries_askar
 import jsoncanon
 
-from did_history.did import SCID_PLACEHOLDER
-from did_history.format import HashInfo, format_hash
+from did_history.did_url import SCID_PLACEHOLDER
+from did_history.hash_utils import HashInfo
 from did_history.state import DocumentState
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
@@ -24,7 +25,6 @@ from .proof import (
     VerifyingKey,
     di_jcs_sign,
 )
-
 
 DID_CONTEXT = "https://www.w3.org/ns/did/v1"
 DOMAIN_PATTERN = re.compile(r"^([a-zA-Z0-9%_\-]+\.)+[a-zA-Z0-9%_\.\-]{2,}$")
@@ -37,7 +37,11 @@ async def auto_provision_did(
     *,
     extra_params: Optional[dict] = None,
     hash_name: Optional[str] = None,
-) -> Tuple[Path, DocumentState, AskarSigningKey]:
+) -> tuple[Path, DocumentState, AskarSigningKey]:
+    """Automatically provision a new did:tdw DID.
+
+    This will create a new Askar store for key management.
+    """
     update_key = AskarSigningKey.generate(key_alg)
     placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
     genesis = genesis_document(placeholder_id)
@@ -46,7 +50,7 @@ async def auto_provision_did(
     if params.get("prerotation"):
         next_key = AskarSigningKey.generate(key_alg)
         hash_info = HashInfo.from_name(hash_name or "sha2-256")
-        next_key_hash = format_hash(hash_info.hash(next_key.multikey.encode("utf-8")))
+        next_key_hash = hash_info.formatted_hash(next_key.multikey.encode("utf-8"))
         params["nextKeyHashes"] = [next_key_hash]
     else:
         next_key = None
@@ -83,6 +87,7 @@ async def auto_provision_did(
 
 
 def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict:
+    """Format a verifiying key as a DID Document verification method."""
     keydef = {
         "type": "Multikey",
         "publicKeyMultibase": vk.multikey,
@@ -106,8 +111,7 @@ def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict
 
 
 def genesis_document(placeholder_id: str) -> dict:
-    """
-    Generate a standard genesis document from a set of verification keys.
+    """Generate a standard genesis document from a set of verification keys.
 
     The exact format of this document may change over time.
     """
@@ -125,6 +129,10 @@ def provision_did(
     timestamp: Optional[datetime] = None,
     hash_name: Optional[str] = None,
 ) -> DocumentState:
+    """Provision a new DID from an initial document state.
+
+    This does not create a new history file or add proof(s) to the state.
+    """
     if not params:
         params = {}
     method = f"did:{METHOD_NAME}:{METHOD_VERSION}"
@@ -147,9 +155,7 @@ if __name__ == "__main__":
         "--algorithm",
         help="the signing key algorithm (default ed25519)",
     )
-    parser.add_argument(
-        "--hash", help="the name of the hash function (default sha-256)"
-    )
+    parser.add_argument("--hash", help="the name of the hash function (default sha-256)")
     parser.add_argument(
         "domain_path", help="the domain name and optional path components"
     )
@@ -168,7 +174,7 @@ if __name__ == "__main__":
             )
         )
     except ValueError as err:
-        raise SystemExit(f"Provisioning failed: {err}")
+        raise SystemExit(f"Provisioning failed: {err}") from None
 
     doc_path = doc_dir.joinpath("did.json")
     with open(doc_path, "w") as out:

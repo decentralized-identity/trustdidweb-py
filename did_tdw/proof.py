@@ -1,16 +1,19 @@
+"""Document proof generation and verification."""
+
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256, sha384
 from typing import Optional
 
 import aries_askar
 import jsoncanon
+from multiformats import multibase
 
 from did_history.date_utils import make_timestamp
-from did_history.did import DIDUrl
-from did_history.key import MultiKey
+from did_history.did_url import DIDUrl
+from did_history.multi_key import MultiKey
 from did_history.state import DocumentState
-from multiformats import multibase
 
 from .const import METHOD_NAME, METHOD_VERSION
 
@@ -37,47 +40,63 @@ DI_SUPPORTED = [
 
 
 class VerifyingKey(ABC):
-    @property
-    @abstractmethod
-    def kid(self) -> Optional[str]: ...
+    """A public key used for verifying proofs."""
 
     @property
     @abstractmethod
-    def algorithm(self) -> str: ...
+    def kid(self) -> Optional[str]:
+        """The key identifier."""
 
     @property
     @abstractmethod
-    def multicodec_name(self) -> Optional[str]: ...
+    def algorithm(self) -> str:
+        """The key algorithm."""
 
     @property
     @abstractmethod
-    def public_key_bytes(self) -> bytes: ...
+    def multicodec_name(self) -> Optional[str]:
+        """The standard codec identifier as defined by `multicodec`."""
+
+    @property
+    @abstractmethod
+    def public_key_bytes(self) -> bytes:
+        """The raw bytes of the public key."""
 
     @property
     def multikey(self) -> MultiKey:
+        """Generate a new `MultiKey` instance from this verifying key."""
         return MultiKey.from_public_key(self.multicodec_name, self.public_key_bytes)
 
 
 class SigningKey(VerifyingKey):
+    """A private keypair used for generating proofs."""
+
     @abstractmethod
-    def sign_message(self, message: bytes) -> bytes: ...
+    def sign_message(self, message: bytes) -> bytes:
+        """Sign a message with this key, producing a new signature."""
 
 
 class AskarSigningKey(SigningKey):
+    """A signing key managed by an Askar store."""
+
     def __init__(self, key: aries_askar.Key, *, kid: str = None):
+        """Initializer."""
         self.key = key
         self._kid = kid or self.multikey
 
     @classmethod
     def generate(cls, alg: str) -> "AskarSigningKey":
+        """Generate a new, random signing key for a given key algorithm."""
         return AskarSigningKey(aries_askar.Key.generate(alg))
 
     @property
     def algorithm(self) -> str:
+        """The algorithm of the signing key."""
         return self.key.algorithm.value
 
     @property
     def kid(self) -> Optional[str]:
+        """The key identifier of the signing key."""
         return self._kid
 
     @kid.setter
@@ -86,6 +105,7 @@ class AskarSigningKey(SigningKey):
 
     @property
     def multicodec_name(self) -> Optional[str]:
+        """The standard codec identifier as defined by `multicodec`."""
         match self.key.algorithm:
             case aries_askar.KeyAlg.ED25519:
                 return "ed25519-pub"
@@ -96,9 +116,11 @@ class AskarSigningKey(SigningKey):
 
     @property
     def public_key_bytes(self) -> bytes:
+        """The raw bytes of the public key."""
         return self.key.get_public_bytes()
 
     def sign_message(self, message: bytes) -> bytes:
+        """Sign a message with this key, producing a new signature."""
         return self.key.sign_message(message)
 
 
@@ -109,18 +131,18 @@ def di_jcs_sign(
     timestamp: Optional[datetime] = None,
     kid: Optional[str] = None,
 ) -> dict:
+    """Sign a document state with a signing key."""
     return di_jcs_sign_raw(
-        state.document,
+        state.history_line(),
         sk,
         purpose="authentication",
-        challenge=state.version_id,
         timestamp=timestamp,
         kid=kid,
     )
 
 
 def di_jcs_sign_raw(
-    document: dict,
+    proof_input: dict,
     sk: SigningKey,
     purpose: str,
     *,
@@ -128,6 +150,7 @@ def di_jcs_sign_raw(
     timestamp: Optional[datetime] = None,
     kid: Optional[str] = None,
 ) -> dict:
+    """Sign a dictionary value with a signing key."""
     alg = sk.algorithm
     suite = None
     for opt in DI_SUPPORTED:
@@ -142,7 +165,7 @@ def di_jcs_sign_raw(
             kid = f"did:key:{kid}#{kid}"
     if not suite:
         raise ValueError(f"Unsupported key algorithm: {alg}")
-    proof = {
+    options = {
         "type": "DataIntegrityProof",
         "cryptosuite": suite["cryptosuite"],
         "verificationMethod": kid,
@@ -150,16 +173,22 @@ def di_jcs_sign_raw(
         "proofPurpose": purpose,
     }
     if challenge:
-        proof["challenge"] = challenge
+        options["challenge"] = challenge
     hash_fn = suite["hash"]
-    data_hash = hash_fn(jsoncanon.canonicalize(document)).digest()
-    options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
-    sig_input = data_hash + options_hash
-    proof["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
-    return proof
+    data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
+    options_hash = hash_fn(jsoncanon.canonicalize(options)).digest()
+    sig_input = options_hash + data_hash
+    options["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
+    return options
 
 
 def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
+    """Verify a proof against a document state."""
+    return di_jcs_verify_raw(state.history_line(), proof, method)
+
+
+def di_jcs_verify_raw(proof_input: dict, proof: dict, method: dict):
+    """Verify a proof against a dictionary value."""
     if proof.get("type") != "DataIntegrityProof":
         raise ValueError("Unsupported proof type")
     if proof.get("proofPurpose") != "authentication":
@@ -179,16 +208,24 @@ def di_jcs_verify(state: DocumentState, proof: dict, method: dict):
         raise ValueError(f"Unsupported cryptosuite for proof: {suite_name}/{codec}")
     key = aries_askar.Key.from_public_bytes(suite["algorithm"], key_bytes)
     hash_fn = suite["hash"]
-    data_hash = hash_fn(jsoncanon.canonicalize(state.document)).digest()
+    data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
     proof = proof.copy()
     signature = multibase.decode(proof.pop("proofValue"))
     options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
-    sig_input = data_hash + options_hash
+    sig_input = options_hash + data_hash
     if not key.verify_signature(sig_input, signature):
         raise ValueError("Invalid signature for proof")
 
 
-def check_document_id_format(doc_id: str, scid: str):
+def di_jcs_canonicalize_input(proof_input: dict) -> bytes:
+    """Canonicalize a proof input according to JCS."""
+    proof_input = deepcopy(proof_input)
+    if "proof" in proof_input:
+        del proof_input["proof"]
+    return jsoncanon.canonicalize(proof_input)
+
+
+def _check_document_id_format(doc_id: str, scid: str):
     url = DIDUrl.decode(doc_id)
     if url.root != url:
         raise ValueError("Document identifier must be a DID")
@@ -200,16 +237,17 @@ def check_document_id_format(doc_id: str, scid: str):
     if not path:
         raise ValueError("Missing domain from method-specific ID")
     domain, *path = path
-    check_valid_domain(domain)
+    _check_valid_domain(domain)
 
 
-def check_valid_domain(domain: str):
+def _check_valid_domain(domain: str):
     domain = domain.split(".")
     if len(domain) < 2 or not all(len(s) >= 2 and s[:1].isalpha() for s in domain):
         raise ValueError("Invalid domain name in method-specific ID")
 
 
 def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: bool):
+    """Verify all proofs on a document state."""
     doc_id = state.document_id
     proofs = state.proofs
     if not proofs:
@@ -248,13 +286,15 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: boo
 
 
 def verify_params(state: DocumentState, prev_state: DocumentState, is_final: bool):
-    check_document_id_format(state.document_id, state.params["scid"])
+    """Verify the correct parameters on a document state."""
+    _check_document_id_format(state.document_id, state.params["scid"])
     method = state.params.get("method")
     if method != f"did:{METHOD_NAME}:{METHOD_VERSION}":
         raise ValueError(f"Unexpected value for method parameter: {method}")
 
 
 def verify_all(state: DocumentState, prev_state: DocumentState, is_final: bool):
+    """Verify the proofs and parameters on a document state."""
     # FIXME add resolution context instead of is_final flag?
     verify_params(state, prev_state, is_final)
     if state.version_id == 1 or state.is_auth_event or is_final:

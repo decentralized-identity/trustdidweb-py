@@ -1,3 +1,5 @@
+"""Support for DID resolution."""
+
 import json
 
 from copy import deepcopy
@@ -10,6 +12,8 @@ from .loader import VerifyState, load_history
 
 
 class ResolutionError(Exception):
+    """An error raised during DID resolution."""
+
     error: str
     message: Optional[str] = None
 
@@ -19,12 +23,14 @@ class ResolutionError(Exception):
         message: str = None,
         status_code: int = 400,
     ):
+        """Initializer."""
         super().__init__()
         self.error = error
         self.message = message
         self.status_code = status_code
 
     def serialize(self) -> dict:
+        """Serialize this error to a JSON-compatible dictionary."""
         return {
             "error": self.error,
             "errorMessage": self.message,
@@ -34,11 +40,14 @@ class ResolutionError(Exception):
 
 @dataclass
 class ResolutionResult:
+    """The result of a DID resolution operation."""
+
     document: Optional[dict] = None
     document_metadata: Optional[dict] = None
     resolution_metadata: Optional[dict] = None
 
     def serialize(self) -> dict:
+        """Serialize this result to a JSON-compatible dictionary."""
         return {
             "@context": "https://w3id.org/did-resolution/v1",
             "didDocument": self.document,
@@ -49,11 +58,14 @@ class ResolutionResult:
 
 @dataclass
 class DereferencingResult:
+    """The result of a DID dereferencing operation."""
+
     dereferencing_metadata: dict
     content: str = ""
     content_metadata: Optional[dict] = None
 
     def serialize(self) -> dict:
+        """Serialize this result to a JSON-compatible dictionary."""
         return {
             "@context": "https://w3id.org/did-resolution/v1",
             "dereferencingMetadata": self.dereferencing_metadata,
@@ -70,6 +82,16 @@ async def resolve_history(
     version_id: Union[int, str] = None,
     version_time: Union[datetime, str] = None,
 ) -> ResolutionResult:
+    """Resolve a `ResolutionResult` from an async log iterator.
+
+    Params:
+        document_id: the DID to be resolved
+        history: an async string iterator over ordered log lines
+        version_id: stop parsing at the requested versionId
+        version_time: stop parsing at the most recent entry before
+            or exactly matching the requested versionTime
+        verify_state: verification to perform on each intermediate state
+    """
     if isinstance(version_id, str):
         # FIXME handle conversion error
         version_id = int(str)
@@ -96,7 +118,7 @@ async def resolve_history(
     return ResolutionResult(document=state.document, document_metadata=meta.serialize())
 
 
-def add_ref(doc_id: str, node: dict, refmap: dict, all: set):
+def _add_ref(doc_id: str, node: dict, refmap: dict, all: set):
     reft = node.get("id")
     if not isinstance(reft, str):
         return
@@ -111,6 +133,7 @@ def add_ref(doc_id: str, node: dict, refmap: dict, all: set):
 
 
 def reference_map(document: dict) -> dict[str, dict]:
+    """Collect identified fragments (#ids) in a DID Document."""
     # indexing top-level collections only
     doc_id = document.get("id")
     if not isinstance(doc_id, str):
@@ -122,16 +145,17 @@ def reference_map(document: dict) -> dict[str, dict]:
             continue
         if isinstance(v, dict):
             res[k] = {}
-            add_ref(doc_id, v, res[k], all)
+            _add_ref(doc_id, v, res[k], all)
         elif isinstance(v, list):
             res[k] = {}
             for vi in v:
                 if isinstance(vi, dict):
-                    add_ref(doc_id, vi, res[k], all)
+                    _add_ref(doc_id, vi, res[k], all)
     return res
 
 
-def normalize_services(document: dict) -> list:
+def normalize_services(document: dict) -> list[dict]:
+    """Normalize a `service` block to a list of dicts."""
     svcs = document.get("service", [])
     if not isinstance(svcs, list):
         svcs = [svcs]
@@ -147,6 +171,7 @@ def normalize_services(document: dict) -> list:
 
 
 def dereference_fragment(document: dict, reft: str) -> DereferencingResult:
+    """Dereference a fragment identifier within a document."""
     res = None
     try:
         if not reft.startswith("#"):

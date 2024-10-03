@@ -1,7 +1,8 @@
+"""Update existing did:tdw DIDs."""
+
 import argparse
 import asyncio
 import json
-
 from datetime import datetime
 from pathlib import Path
 from typing import Union
@@ -23,10 +24,11 @@ async def auto_update_did(
     params_update: dict = None,
     timestamp: Union[datetime, str] = None,
 ) -> DocumentState:
+    """Automatically update a history log."""
     doc_path = doc_dir.joinpath("did.json")
     if not doc_path.is_file():
-        raise ValueError("Document file (doc.json) not found")
-    with open(doc_path, "r") as docf:
+        raise ValueError("Document file (did.json) not found")
+    with open(doc_path) as docf:
         document = json.load(docf)
     history_path = doc_dir.joinpath(HISTORY_FILENAME)
     prev_state, _ = await load_history_path(history_path, verify_proofs=False)
@@ -63,6 +65,7 @@ async def update_did(
     params_update: dict = None,
     timestamp: Union[datetime, str] = None,
 ) -> DocumentState:
+    """Update a history log, given a new document state and signing key."""
     state = prev_state.create_next(
         document, params_update=params_update, timestamp=timestamp
     )
@@ -72,6 +75,7 @@ async def update_did(
         and state.params == prev_state.params
     ):
         raise ValueError("There are no document or parameter updates to apply")
+    # FIXME check that the signing key is present in the updateKeys
     state.proofs.append(di_jcs_sign(state, sk, timestamp=state.timestamp))
     with open(history_path, "a") as out:
         print(
@@ -108,7 +112,7 @@ if __name__ == "__main__":
             auto_update_did(doc_dir, "password", check_modified=not args.force)
         )
     except ValueError as err:
-        raise SystemExit(f"Update failed: {err}")
+        raise SystemExit(f"Update failed: {err}") from None
 
     doc_path = doc_dir.joinpath("did.json")
     with open(doc_path, "w") as out:

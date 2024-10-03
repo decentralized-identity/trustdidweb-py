@@ -1,8 +1,11 @@
+"""Resolution of did:tdw DIDs."""
+
 import argparse
 import asyncio
 import json
 import urllib.parse
-
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
@@ -10,7 +13,7 @@ from typing import Optional, Union
 import aiofiles
 import aiohttp
 
-from did_history.did import DIDUrl
+from did_history.did_url import DIDUrl
 from did_history.resolver import (
     DereferencingResult,
     ResolutionError,
@@ -26,6 +29,7 @@ from .proof import verify_all
 
 
 def did_history_url(didurl: DIDUrl) -> str:
+    """Determine the URL of the DID history file from a did:tdw DID URL."""
     id_parts = didurl.identifier.split(":")[1:]
     if didurl.method != METHOD_NAME or not id_parts or "" in id_parts:
         raise ValueError("Invalid DID")
@@ -42,6 +46,7 @@ def did_history_url(didurl: DIDUrl) -> str:
 
 
 def extend_document_services(document: dict, access_url: str):
+    """Add the implicit services to a DID document, where not defined."""
     document["service"] = normalize_services(document)
     pos = access_url.rfind("/")
     if pos <= 0:
@@ -71,7 +76,7 @@ def extend_document_services(document: dict, access_url: str):
         )
 
 
-def find_service(document: dict, name: str) -> Optional[dict]:
+def _find_service(document: dict, name: str) -> Optional[dict]:
     if name.startswith("#"):
         name = document["id"] + name
     ref_map = reference_map(document)
@@ -85,58 +90,50 @@ async def resolve_did(
     version_id: Union[int, str, None] = None,
     version_time: Union[datetime, str, None] = None,
     add_implicit: bool = True,
+    resolve_url: Optional[Callable[[str], Awaitable[AsyncIterator[str]]]] = None,
 ) -> ResolutionResult:
-    if isinstance(did, str):
-        didurl = DIDUrl.decode(did)
-    else:
-        didurl = did
+    """Resolve a did:tdw DID or DID URL.
+
+    Resolution parameters within a DID URL are not applied.
+    """
+    didurl = DIDUrl.decode(did) if isinstance(did, str) else did
     url = did_history_url(didurl)
     if local_history:
-        # FIXME catch read errors
-        async with aiofiles.open(local_history, "r") as history:
+        fetch_history = aiofiles.open(local_history)
+    else:
+        fetch_history = (resolve_url or _resolve_url)(url)
+    try:
+        async with fetch_history as content:
             result = await resolve_history(
                 didurl.did,
-                history,
+                content,
                 version_id=version_id,
                 version_time=version_time,
                 verify_state=verify_all,
             )
-    else:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as req:
-                    req.raise_for_status()
-                    result = await resolve_history(
-                        didurl.did,
-                        req.content,
-                        version_id=version_id,
-                        version_time=version_time,
-                        verify_state=verify_all,
-                    )
-        except aiohttp.ClientError as err:
-            return ResolutionResult(
-                resolution_metadata=ResolutionError(
-                    "notFound", f"Error fetching DID history: {str(err)}"
-                ).serialize()
-            )
-
+    except ValueError as err:
+        return ResolutionResult(
+            resolution_metadata=ResolutionError(
+                "notFound", f"Error fetching DID history: {str(err)}"
+            ).serialize()
+        )
     if result.document and add_implicit:
         extend_document_services(result.document, url)
     return result
 
 
-def resolve_relative_ref_to_url(document: dict, service: str, relative_ref: str) -> str:
-    svc = find_service(document, f"#{service}")
+def _resolve_relative_ref_to_url(document: dict, service: str, relative_ref: str) -> str:
+    svc = _find_service(document, f"#{service}")
     if svc:
         endpt = svc.get("serviceEndpoint")
         if isinstance(endpt, str):
             return urllib.parse.urljoin(endpt, relative_ref.removeprefix("/"))
 
 
-async def resolve_relative_ref(
+async def _resolve_relative_ref(
     document: dict, service: str, relative_ref: str
 ) -> DereferencingResult:
-    url = resolve_relative_ref_to_url(document, service, relative_ref)
+    url = _resolve_relative_ref_to_url(document, service, relative_ref)
     if not url:
         return DereferencingResult(
             dereferencing_metadata=ResolutionError(
@@ -164,6 +161,7 @@ async def resolve_relative_ref(
 
 
 async def resolve(didurl: str, *, local_history: Optional[Path] = None) -> dict:
+    """Resolve a did:tdw DID URL, applying any included DID resolution parameters."""
     try:
         didurl = DIDUrl.decode(args.didurl)
     except ValueError as err:
@@ -191,12 +189,22 @@ async def resolve(didurl: str, *, local_history: Optional[Path] = None) -> dict:
     )
 
     if service_name and relative_ref and result.document:
-        result = await resolve_relative_ref(result.document, service_name, relative_ref)
+        result = await _resolve_relative_ref(result.document, service_name, relative_ref)
     elif didurl.fragment and result.document:
         result = dereference_fragment(result.document, didurl.fragment)
     # FIXME relative_ref + fragment combination?
 
     return result.serialize()
+
+
+@asynccontextmanager
+async def _resolve_url(url: str) -> AsyncIterator[str]:
+    try:
+        async with aiohttp.ClientSession() as session, session.get(url) as req:
+            req.raise_for_status()
+            return req.content
+    except aiohttp.ClientError as err:
+        raise ValueError(str(err)) from None
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+"""Methods to iterate through a DID log."""
+
 import json
 
 from datetime import datetime
@@ -15,6 +17,15 @@ async def load_history(
     version_time: datetime = None,
     verify_state: VerifyState = None,
 ) -> Tuple[DocumentState, DocumentMetadata]:
+    """Resolve a document state and metadata from an async log iterator.
+
+    Params:
+        history: an async string iterator over ordered log lines
+        version_id: stop parsing at the requested versionId
+        version_time: stop parsing at the most recent entry before
+            or exactly matching the requested versionTime
+        verify_state: verification to perform on each intermediate state
+    """
     created = None
 
     states = iter_history(
@@ -45,6 +56,15 @@ async def iter_history(
     version_time: datetime = None,
     verify_state: VerifyState = None,
 ) -> AsyncIterator[DocumentState]:
+    """Iterate through each intermediate state in a DID log.
+
+    Params:
+        history: an async string iterator over ordered log lines
+        version_id: stop parsing at the requested versionId
+        version_time: stop parsing at the most recent entry before
+            or exactly matching the requested versionTime
+        verify_state: verification to perform on each intermediate state
+    """
     prev_state = None
     state = None
     next_state = None

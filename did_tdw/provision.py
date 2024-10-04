@@ -14,11 +14,10 @@ from typing import Optional, Union
 import aries_askar
 import jsoncanon
 
-from did_history.did_url import SCID_PLACEHOLDER
-from did_history.hash_utils import HashInfo
-from did_history.state import DocumentState
-
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
+from .core.did_url import SCID_PLACEHOLDER
+from .core.hash_utils import HashInfo
+from .core.state import DocumentState
 from .history import load_history_path, write_document_state
 from .proof import (
     AskarSigningKey,

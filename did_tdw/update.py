@@ -9,10 +9,9 @@ from typing import Union
 
 import aries_askar
 
-from did_history.state import DocumentState
-
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
-from .history import load_history_path
+from .core import load_history_path
+from .core.state import DocumentState
 from .proof import AskarSigningKey, SigningKey, di_jcs_sign
 
 

@@ -1,7 +1,6 @@
 """DID history state handling."""
 
 import json
-
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
@@ -9,10 +8,9 @@ from typing import Optional, Union
 
 import jsoncanon
 
-from .did_url import SCID_PLACEHOLDER
 from .date_utils import iso_format_datetime, make_timestamp
+from .did_url import SCID_PLACEHOLDER
 from .hash_utils import HashInfo
-
 
 AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
 
@@ -176,10 +174,7 @@ class DocumentState:
         else:
             params_update = {}
         timestamp, timestamp_raw = make_timestamp(timestamp)
-        if document is None:
-            document = deepcopy(self.document)
-        else:
-            document = deepcopy(document)
+        document = deepcopy(self.document if document is None else document)
         ret = DocumentState(
             params=params,
             params_update=params_update,
@@ -263,8 +258,7 @@ class DocumentState:
             new_keys = params.get("updateKeys") or []
             hash_info = prev_state._get_hash_info()
             expect_hashes = set(
-                hash_info.formatted_hash(new_key.encode("utf-8"))
-                for new_key in new_keys
+                hash_info.formatted_hash(new_key.encode("utf-8")) for new_key in new_keys
             )
             if expect_hashes != check_hashes:
                 raise ValueError(
@@ -272,10 +266,7 @@ class DocumentState:
                     "with 'nextKeyHashes' parameter"
                 )
 
-        if prev_state:
-            last_version_id = prev_state.version_id
-        else:
-            last_version_id = params["scid"]
+        last_version_id = prev_state.version_id if prev_state else params["scid"]
 
         if not isinstance(proofs, list) or any(
             not isinstance(prf, dict) for prf in proofs
@@ -396,9 +387,7 @@ class DocumentState:
                         f"Unsupported value for 'prerotation' parameter: {pvalue!r}"
                     )
                 if old_params.get("prerotation") and not pvalue:
-                    raise ValueError(
-                        "Parameter 'prerotation' cannot be changed to False"
-                    )
+                    raise ValueError("Parameter 'prerotation' cannot be changed to False")
             elif param == "scid":
                 if old_params:
                     raise ValueError("Parameter 'scid' cannot be updated")
@@ -408,9 +397,7 @@ class DocumentState:
                     )
             elif param == "ttl":
                 if not isinstance(pvalue, int) or pvalue <= 0:
-                    raise ValueError(
-                        f"Unsupported value for 'ttl' parameter: {pvalue!r}"
-                    )
+                    raise ValueError(f"Unsupported value for 'ttl' parameter: {pvalue!r}")
             elif param == "updateKeys":
                 if pvalue is not None and (
                     not isinstance(pvalue, list)

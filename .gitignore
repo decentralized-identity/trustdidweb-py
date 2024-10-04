@@ -1,6 +1,7 @@
 /did:*
 *.pyc
 __pycache__
+/dist
 
 .venv
 .vscode

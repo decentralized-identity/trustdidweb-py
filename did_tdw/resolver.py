@@ -13,8 +13,9 @@ from typing import Optional, Union
 import aiofiles
 import aiohttp
 
-from did_history.did_url import DIDUrl
-from did_history.resolver import (
+from .const import HISTORY_FILENAME, METHOD_NAME
+from .core.did_url import DIDUrl
+from .core.resolver import (
     DereferencingResult,
     ResolutionError,
     ResolutionResult,
@@ -23,8 +24,6 @@ from did_history.resolver import (
     reference_map,
     resolve_history,
 )
-
-from .const import HISTORY_FILENAME, METHOD_NAME
 from .proof import verify_all
 
 

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from aries_askar import Key as AskarKey
 
-from did_history.state import DocumentState
+from did_tdw.core.state import DocumentState
 from did_tdw.proof import (
     AskarSigningKey,
     _check_document_id_format,

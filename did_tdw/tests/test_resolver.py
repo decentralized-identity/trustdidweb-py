@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from did_history.resolver import ResolutionResult
+from did_tdw.core.resolver import ResolutionResult
 from did_tdw.resolver import resolve_did
 
 

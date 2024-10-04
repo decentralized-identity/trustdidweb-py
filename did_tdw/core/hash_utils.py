@@ -1,11 +1,11 @@
 """Hashing utilities and metadata."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Callable, TypeAlias
+from typing import TypeAlias
 
 import base58
-
 from multiformats import multihash
 
 HashFn: TypeAlias = Callable[[bytes], bytes]

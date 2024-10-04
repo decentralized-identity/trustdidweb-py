@@ -10,14 +10,14 @@ from typing import Optional
 
 import aries_askar
 
-from did_history.date_utils import make_timestamp
-from did_history.state import DocumentState
 from did_tdw.const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
-from did_tdw.history import (
+from did_tdw.core import (
     load_history_path,
     update_document_state,
     write_document_state,
 )
+from did_tdw.core.date_utils import make_timestamp
+from did_tdw.core.state import DocumentState
 from did_tdw.proof import AskarSigningKey, SigningKey, di_jcs_sign_raw
 from did_tdw.provision import (
     auto_provision_did,

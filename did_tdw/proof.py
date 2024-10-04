@@ -10,12 +10,11 @@ import aries_askar
 import jsoncanon
 from multiformats import multibase
 
-from did_history.date_utils import make_timestamp
-from did_history.did_url import DIDUrl
-from did_history.multi_key import MultiKey
-from did_history.state import DocumentState
-
 from .const import METHOD_NAME, METHOD_VERSION
+from .core.date_utils import make_timestamp
+from .core.did_url import DIDUrl
+from .core.multi_key import MultiKey
+from .core.state import DocumentState
 
 DI_SUPPORTED = [
     {

@@ -3,8 +3,8 @@ from json import JSONDecodeError
 
 import pytest
 
-from did_history.hash_utils import HashInfo
-from did_history.state import DocumentState
+from did_tdw.core.hash_utils import HashInfo
+from did_tdw.core.state import DocumentState
 
 
 def test_initial_document_state():

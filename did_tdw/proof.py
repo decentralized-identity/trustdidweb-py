@@ -15,6 +15,7 @@ from .core.date_utils import make_timestamp
 from .core.did_url import DIDUrl
 from .core.multi_key import MultiKey
 from .core.state import DocumentState
+from .domain_path import DomainPath
 
 DI_SUPPORTED = [
     {
@@ -230,19 +231,9 @@ def _check_document_id_format(doc_id: str, scid: str):
         raise ValueError("Document identifier must be a DID")
     if url.method != METHOD_NAME:
         raise ValueError(f"Expected DID method to be '{METHOD_NAME}'")
-    check_scid, *path = url.identifier.split(":")
-    if check_scid != scid:
+    pathinfo = DomainPath.parse_identifier(url.identifier)
+    if pathinfo.scid != scid:
         raise ValueError("SCID must be the first component of the method-specific ID")
-    if not path:
-        raise ValueError("Missing domain from method-specific ID")
-    domain, *path = path
-    _check_valid_domain(domain)
-
-
-def _check_valid_domain(domain: str):
-    domain = domain.split(".")
-    if len(domain) < 2 or not all(len(s) >= 2 and s[:1].isalpha() for s in domain):
-        raise ValueError("Invalid domain name in method-specific ID")
 
 
 def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: bool):

@@ -10,7 +10,7 @@ import jsoncanon
 
 from .date_utils import iso_format_datetime, make_timestamp
 from .did_url import SCID_PLACEHOLDER
-from .hash_utils import HashInfo
+from .hash_utils import DEFAULT_HASH, HashInfo
 
 AUTH_PARAMS = {"prerotation", "nextKeyHashes", "updateKeys"}
 
@@ -85,7 +85,7 @@ class DocumentState:
             version_number=0,
             proofs=[],
         )
-        hash_info = HashInfo.from_name(hash_name or "sha2-256")
+        hash_info = HashInfo.from_name(hash_name or DEFAULT_HASH)
         scid = genesis._generate_entry_hash(hash_info)
         genesis.version_id = scid
 
@@ -333,6 +333,11 @@ class DocumentState:
     def prerotation(self) -> bool:
         """Determine whether key prerotation is enabled for this document state."""
         return self.params.get("prerotation", False)
+
+    @property
+    def scid(self) -> str:
+        """Fetch the SCID of the DID document."""
+        return self.params["scid"]
 
     @property
     def update_keys(self) -> list[str]:

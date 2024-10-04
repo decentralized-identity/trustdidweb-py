@@ -10,8 +10,8 @@ from typing import Union
 import aries_askar
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
-from .core import load_history_path
 from .core.state import DocumentState
+from .history import load_history_path
 from .proof import AskarSigningKey, SigningKey, di_jcs_sign
 
 

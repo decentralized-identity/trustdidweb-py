@@ -11,13 +11,13 @@ from typing import Optional
 import aries_askar
 
 from did_tdw.const import ASKAR_STORE_FILENAME, HISTORY_FILENAME
-from did_tdw.core import (
+from did_tdw.core.date_utils import make_timestamp
+from did_tdw.core.state import DocumentState
+from did_tdw.history import (
     load_history_path,
     update_document_state,
     write_document_state,
 )
-from did_tdw.core.date_utils import make_timestamp
-from did_tdw.core.state import DocumentState
 from did_tdw.proof import AskarSigningKey, SigningKey, di_jcs_sign_raw
 from did_tdw.provision import (
     auto_provision_did,
@@ -73,7 +73,7 @@ async def demo(
         extra_params=params,
         hash_name=hash_name,
     )
-    print(f"Provisioned DID: {state.document_id}")
+    print(f"Provisioned DID: {state.document_id} in {doc_dir.name}")
     log_document_state(doc_dir, state)
     created = state.timestamp
     store_path = doc_dir.joinpath(ASKAR_STORE_FILENAME)

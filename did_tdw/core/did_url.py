@@ -1,7 +1,6 @@
 """DID URL format handling."""
 
 import re
-
 from dataclasses import dataclass
 from typing import ClassVar
 from urllib.parse import parse_qs
@@ -30,8 +29,7 @@ class DIDUrl:
 
     @classmethod
     def decode(cls, url: str) -> "DIDUrl":
-        """
-        Decode a string as a DID URL.
+        """Decode a string as a DID URL.
 
         Raises:
             ValueError: on invalid inputs

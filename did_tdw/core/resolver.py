@@ -1,11 +1,11 @@
 """Support for DID resolution."""
 
 import json
-
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import AsyncIterator, Optional, Union
+from typing import Optional, Union
 
 from .date_utils import make_timestamp
 from .loader import VerifyState, load_history
@@ -161,9 +161,7 @@ def normalize_services(document: dict) -> list[dict]:
         svcs = [svcs]
     for svc in svcs:
         if not isinstance(svc, dict):
-            raise ValueError(
-                "Expected map or list of map entries for 'service' property"
-            )
+            raise ValueError("Expected map or list of map entries for 'service' property")
         svc_id = svc.get("id")
         if not svc_id or not isinstance(svc_id, str) or "#" not in svc_id:
             raise ValueError(f"Invalid service entry id: {svc_id}")

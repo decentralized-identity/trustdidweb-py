@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from did_history.resolver import (
+from did_tdw.core.resolver import (
     DereferencingResult,
     ResolutionResult,
     dereference_fragment,

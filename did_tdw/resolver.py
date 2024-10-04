@@ -13,8 +13,9 @@ from typing import Optional, Union
 import aiofiles
 import aiohttp
 
-from did_history.did_url import DIDUrl
-from did_history.resolver import (
+from .const import HISTORY_FILENAME, METHOD_NAME
+from .core.did_url import DIDUrl
+from .core.resolver import (
     DereferencingResult,
     ResolutionError,
     ResolutionResult,
@@ -23,26 +24,18 @@ from did_history.resolver import (
     reference_map,
     resolve_history,
 )
-
-from .const import HISTORY_FILENAME, METHOD_NAME
+from .domain_path import DomainPath
 from .proof import verify_all
 
 
 def did_history_url(didurl: DIDUrl) -> str:
     """Determine the URL of the DID history file from a did:tdw DID URL."""
-    id_parts = didurl.identifier.split(":")[1:]
-    if didurl.method != METHOD_NAME or not id_parts or "" in id_parts:
+    if didurl.method != METHOD_NAME:
         raise ValueError("Invalid DID")
-    host = urllib.parse.unquote(id_parts[0])
-    if ":" in host:
-        host, port_str = host.split(":", 1)
-        if not port_str.isdecimal():
-            raise ValueError("Invalid port specification")
-        port = f":{port_str}"
-    else:
-        port = ""
-    path = id_parts[1:] or (".well-known",)
-    return "/".join((f"https://{host}{port}", *path, HISTORY_FILENAME))
+    pathinfo = DomainPath.parse_identifier(didurl.identifier)
+    host = pathinfo.domain_port
+    path = pathinfo.path or (".well-known",)
+    return "/".join((f"https://{host}", *path, HISTORY_FILENAME))
 
 
 def extend_document_services(document: dict, access_url: str):

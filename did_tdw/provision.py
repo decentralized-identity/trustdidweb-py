@@ -14,11 +14,10 @@ from typing import Optional, Union
 import aries_askar
 import jsoncanon
 
-from did_history.did_url import SCID_PLACEHOLDER
-from did_history.hash_utils import HashInfo
-from did_history.state import DocumentState
-
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
+from .core.hash_utils import DEFAULT_HASH, HashInfo
+from .core.state import DocumentState
+from .domain_path import DomainPath
 from .history import load_history_path, write_document_state
 from .proof import (
     AskarSigningKey,
@@ -42,22 +41,22 @@ async def auto_provision_did(
 
     This will create a new Askar store for key management.
     """
+    pathinfo = DomainPath.parse_normalized(domain_path)
     update_key = AskarSigningKey.generate(key_alg)
-    placeholder_id = f"did:{METHOD_NAME}:{SCID_PLACEHOLDER}:{domain_path}"
+    placeholder_id = f"did:{METHOD_NAME}:{pathinfo.identifier}"
     genesis = genesis_document(placeholder_id)
     params = deepcopy(extra_params) if extra_params else {}
     params["updateKeys"] = [update_key.multikey]
     if params.get("prerotation"):
         next_key = AskarSigningKey.generate(key_alg)
-        hash_info = HashInfo.from_name(hash_name or "sha2-256")
+        hash_info = HashInfo.from_name(hash_name or DEFAULT_HASH)
         next_key_hash = hash_info.formatted_hash(next_key.multikey.encode("utf-8"))
         params["nextKeyHashes"] = [next_key_hash]
     else:
         next_key = None
         next_key_hash = None
     state = provision_did(genesis, params=params, hash_name=hash_name)
-    doc_id = state.document_id
-    doc_dir = Path(doc_id)
+    doc_dir = Path(f"{pathinfo.domain}_{state.scid}")
     doc_dir.mkdir(exist_ok=False)
 
     store = await aries_askar.Store.provision(

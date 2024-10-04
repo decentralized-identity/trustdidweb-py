@@ -1,16 +1,17 @@
 """Hashing utilities and metadata."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Callable, TypeAlias
+from typing import TypeAlias
 
 import base58
-
 from multiformats import multihash
 
 HashFn: TypeAlias = Callable[[bytes], bytes]
 
 
+DEFAULT_HASH = "sha2-256"
 HASH_FN_MAP: dict[str, HashFn] = {
     "sha2-256": lambda b: sha256(b).digest(),
     # "sha3-256": lambda b: sha3_256(b).digest(),

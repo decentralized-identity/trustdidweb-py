@@ -7,10 +7,9 @@ from typing import Optional, Union
 
 import aiofiles
 
-from did_history.loader import load_history
-from did_history.state import DocumentMetadata, DocumentState
-
 from .const import HISTORY_FILENAME
+from .core.loader import load_history
+from .core.state import DocumentMetadata, DocumentState
 from .proof import SigningKey, di_jcs_sign, verify_all, verify_params
 
 

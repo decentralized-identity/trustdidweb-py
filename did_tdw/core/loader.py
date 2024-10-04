@@ -1,9 +1,9 @@
 """Methods to iterate through a DID log."""
 
 import json
-
+from collections.abc import AsyncIterator, Callable
 from datetime import datetime
-from typing import AsyncIterator, Callable, Optional, TypeAlias, Tuple
+from typing import Optional, TypeAlias
 
 from .state import DocumentMetadata, DocumentState
 
@@ -16,7 +16,7 @@ async def load_history(
     version_id: int = None,
     version_time: datetime = None,
     verify_state: VerifyState = None,
-) -> Tuple[DocumentState, DocumentMetadata]:
+) -> tuple[DocumentState, DocumentMetadata]:
     """Resolve a document state and metadata from an async log iterator.
 
     Params:

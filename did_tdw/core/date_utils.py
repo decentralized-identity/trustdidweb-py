@@ -1,7 +1,7 @@
 """Date-time handling utilities."""
 
 from datetime import datetime, timezone
-from typing import Tuple, Union
+from typing import Union
 
 
 def iso_format_datetime(dt: datetime) -> str:
@@ -9,9 +9,7 @@ def iso_format_datetime(dt: datetime) -> str:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def make_timestamp(
-    timestamp: Union[datetime, str, None] = None
-) -> Tuple[datetime, str]:
+def make_timestamp(timestamp: Union[datetime, str, None] = None) -> tuple[datetime, str]:
     """Convert from either a string or datetime value into a pair of both."""
     if not timestamp:
         timestamp = datetime.now(timezone.utc).replace(microsecond=0)

@@ -1,6 +1,6 @@
 # Trust DID Web - Python
 
-This repository includes Python libraries for working with `did:tdw` (Trust DID Web) DID documents and the underlying log format. Methods are provided for provisioning and updating DID documents as well as a resolving existing `did:tdw` DIDs. Currently, version 0.3 of [the specification](https://bcgov.github.io/trustdidweb/) is implemented.
+This repository includes Python libraries for working with `did:tdw` (Trust DID Web) DID documents and the underlying log format. Methods are provided for provisioning and updating DID documents as well as a resolving existing `did:tdw` DIDs. Currently, version 0.4 of [the specification](https://bcgov.github.io/trustdidweb/) is implemented.
 
 ## Prerequisites
 

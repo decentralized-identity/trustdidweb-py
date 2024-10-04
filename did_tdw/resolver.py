@@ -195,7 +195,7 @@ async def _resolve_url(url: str) -> AsyncIterator[str]:
     try:
         async with aiohttp.ClientSession() as session, session.get(url) as req:
             req.raise_for_status()
-            return req.content
+            yield req.content
     except aiohttp.ClientError as err:
         raise ValueError(str(err)) from None
 

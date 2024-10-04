@@ -11,6 +11,7 @@ from multiformats import multihash
 HashFn: TypeAlias = Callable[[bytes], bytes]
 
 
+DEFAULT_HASH = "sha2-256"
 HASH_FN_MAP: dict[str, HashFn] = {
     "sha2-256": lambda b: sha256(b).digest(),
     # "sha3-256": lambda b: sha3_256(b).digest(),

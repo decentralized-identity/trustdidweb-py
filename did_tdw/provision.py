@@ -16,7 +16,7 @@ import jsoncanon
 
 from .const import ASKAR_STORE_FILENAME, HISTORY_FILENAME, METHOD_NAME, METHOD_VERSION
 from .core.did_url import SCID_PLACEHOLDER
-from .core.hash_utils import HashInfo
+from .core.hash_utils import DEFAULT_HASH, HashInfo
 from .core.state import DocumentState
 from .history import load_history_path, write_document_state
 from .proof import (
@@ -48,7 +48,7 @@ async def auto_provision_did(
     params["updateKeys"] = [update_key.multikey]
     if params.get("prerotation"):
         next_key = AskarSigningKey.generate(key_alg)
-        hash_info = HashInfo.from_name(hash_name or "sha2-256")
+        hash_info = HashInfo.from_name(hash_name or DEFAULT_HASH)
         next_key_hash = hash_info.formatted_hash(next_key.multikey.encode("utf-8"))
         params["nextKeyHashes"] = [next_key_hash]
     else:

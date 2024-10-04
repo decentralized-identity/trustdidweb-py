@@ -3,12 +3,12 @@ requires-python = ">=3.10"
 
 [tool.poetry]
 name = "did-tdw"
-version = "0.1.0"
+version = "0.2.0"
 description = "This repository includes Python libraries for working with `did:tdw` (Trust DID Web) DID documents and the underlying log format."
 authors = []
 license = "Apache-2.0"
 readme = "README.md"
-packages = [{ include = "did_tdw" }, { include = "did_history" }]
+packages = [{ include = "did_tdw" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"

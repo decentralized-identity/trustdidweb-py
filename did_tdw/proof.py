@@ -191,8 +191,6 @@ def di_jcs_verify_raw(proof_input: dict, proof: dict, method: dict):
     """Verify a proof against a dictionary value."""
     if proof.get("type") != "DataIntegrityProof":
         raise ValueError("Unsupported proof type")
-    if proof.get("proofPurpose") != "authentication":
-        raise ValueError("Expected proof purpose: 'authentication'")
     created = proof.get("created")
     if created:
         make_timestamp(created)  # validate timestamp formatting only
@@ -278,6 +276,12 @@ def verify_proofs(state: DocumentState, prev_state: DocumentState, is_final: boo
 def verify_params(state: DocumentState, prev_state: DocumentState, is_final: bool):
     """Verify the correct parameters on a document state."""
     _check_document_id_format(state.document_id, state.params["scid"])
+    if (
+        prev_state
+        and prev_state.document_id != state.document_id
+        and not prev_state.params.get("portable", False)
+    ):
+        raise ValueError("Document ID updated on non-portable DID")
     method = state.params.get("method")
     if method != f"did:{METHOD_NAME}:{METHOD_VERSION}":
         raise ValueError(f"Unexpected value for method parameter: {method}")

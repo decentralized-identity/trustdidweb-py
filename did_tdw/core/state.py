@@ -373,11 +373,6 @@ class DocumentState:
                     raise ValueError(
                         f"Unsupported value for 'method' parameter: {pvalue!r}"
                     )
-            elif param == "moved":
-                if not isinstance(pvalue, str) or not pvalue:
-                    raise ValueError(
-                        f"Unsupported value for 'moved' parameter: {pvalue!r}"
-                    )
             elif param == "nextKeyHashes":
                 if pvalue is not None and (
                     not isinstance(pvalue, list)
@@ -385,6 +380,15 @@ class DocumentState:
                 ):
                     raise ValueError(
                         f"Unsupported value for 'nextKeyHashes' parameter: {pvalue!r}"
+                    )
+            elif param == "portable":
+                if not isinstance(pvalue, bool):
+                    raise ValueError(
+                        f"Unsupported value for 'portable' parameter: {pvalue!r}"
+                    )
+                if pvalue and old_params and not old_params.get("portable"):
+                    raise ValueError(
+                        "Parameter 'portable' may only be enabled in the first entry"
                     )
             elif param == "prerotation":
                 if pvalue not in (True, False):

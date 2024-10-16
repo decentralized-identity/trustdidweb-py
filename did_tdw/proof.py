@@ -191,8 +191,6 @@ def di_jcs_verify_raw(proof_input: dict, proof: dict, method: dict):
     """Verify a proof against a dictionary value."""
     if proof.get("type") != "DataIntegrityProof":
         raise ValueError("Unsupported proof type")
-    if proof.get("proofPurpose") != "authentication":
-        raise ValueError("Expected proof purpose: 'authentication'")
     created = proof.get("created")
     if created:
         make_timestamp(created)  # validate timestamp formatting only

@@ -5,7 +5,7 @@ from datetime import datetime
 from hashlib import sha256, sha384
 from typing import Optional
 
-import jsoncanon
+import jcs
 from multiformats import multibase
 
 from ..askar import AskarVerifyingKey
@@ -67,7 +67,7 @@ def di_jcs_sign(
         options["challenge"] = challenge
     hash_fn = suite["hash"]
     data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
-    options_hash = hash_fn(jsoncanon.canonicalize(options)).digest()
+    options_hash = hash_fn(jcs.canonicalize(options)).digest()
     sig_input = options_hash + data_hash
     options["proofValue"] = multibase.encode(sk.sign_message(sig_input), "base58btc")
     return options
@@ -102,7 +102,7 @@ def di_jcs_verify(proof_input: dict, proof: dict, method: VerifyingKey | dict):
     data_hash = hash_fn(di_jcs_canonicalize_input(proof_input)).digest()
     proof = proof.copy()
     signature = multibase.decode(proof.pop("proofValue"))
-    options_hash = hash_fn(jsoncanon.canonicalize(proof)).digest()
+    options_hash = hash_fn(jcs.canonicalize(proof)).digest()
     sig_input = options_hash + data_hash
     vkey.verify_signature(sig_input, signature)
 
@@ -112,7 +112,7 @@ def di_jcs_canonicalize_input(proof_input: dict) -> bytes:
     proof_input = deepcopy(proof_input)
     if "proof" in proof_input:
         del proof_input["proof"]
-    return jsoncanon.canonicalize(proof_input)
+    return jcs.canonicalize(proof_input)
 
 
 def resolve_did_key(method_id: str) -> dict:

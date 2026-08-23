@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import aries_askar
-import jsoncanon
+import jcs
 
 from .askar import AskarSigningKey
 from .const import (
@@ -98,7 +98,7 @@ def encode_verification_method(vk: VerifyingKey, controller: str = None) -> dict
     kid = vk.kid
     if not kid:
         kid = "#" + (
-            base64.urlsafe_b64encode(sha256(jsoncanon.canonicalize(keydef)).digest())
+            base64.urlsafe_b64encode(sha256(jcs.canonicalize(keydef)).digest())
             .decode("ascii")
             .rstrip("=")
         )

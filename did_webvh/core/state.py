@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-import jsoncanon
+import jcs
 
 from ..const import METHOD_NAME, METHOD_VERSION, SCID_PLACEHOLDER
 from .date_utils import (
@@ -825,4 +825,4 @@ def verify_state_proofs(state: DocumentState, prev_state: DocumentState | None):
 
 
 def _canonicalize_log_line(line: dict) -> bytes:
-    return jsoncanon.canonicalize(line)
+    return jcs.canonicalize(line)
